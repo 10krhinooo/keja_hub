@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - KejaHub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+    body { min-height:100vh; display:flex; }
+    .left {
+      flex:1;
+      background: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
+                  url('/images/reg.jpg') center/cover no-repeat;
+      flex-direction:column;
+      justify-content:flex-end;
+      padding:48px;
+      color:white;
+    }
+    .left h1 { font-size:36px; font-weight:700; margin-bottom:12px; line-height:1.2; }
+    .left p { font-size:15px; opacity:0.85; line-height:1.6; max-width:380px; }
+    .right {
+      width:520px;
+      background:white;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      padding:48px;
+      overflow-y:auto;
+    }
+    .logo { font-size:22px; font-weight:700; color:#1565c0; margin-bottom:24px; }
+    .logo span { color:#ff6f00; }
+    h2 { font-size:26px; font-weight:700; color:#1a1a2e; margin-bottom:6px; }
+    .subtitle { font-size:14px; color:#888; margin-bottom:20px; }
+    .error { background:#fdecea; color:#c62828; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; }
+    label { display:block; font-size:13px; font-weight:500; color:#444; margin-bottom:5px; margin-top:14px; }
+    input, select {
+      width:100%; padding:12px 14px; border:1.5px solid #e0e0e0;
+      border-radius:8px; font-size:14px; transition:border-color .2s;
+      font-family:'Inter',sans-serif;
+    }
+    input:focus, select:focus { outline:none; border-color:#1565c0; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+    .role-card {
+      border:2px solid #e0e0e0; border-radius:10px; padding:14px;
+      text-align:center; cursor:pointer; transition:all .2s;
+    }
+    .role-card:hover { border-color:#1565c0; background:#f0f7ff; }
+    .role-card input { display:none; }
+    .role-card .icon { font-size:26px; display:block; margin-bottom:6px; }
+    .role-card .label { font-size:13px; font-weight:600; color:#333; }
+    .role-card.selected { border-color:#1565c0; background:#e3f2fd; }
+    .btn {
+      width:100%; padding:13px; background:#1565c0; color:white;
+      border:none; border-radius:8px; font-size:15px; font-weight:600;
+      cursor:pointer; margin-top:20px; transition:background .2s;
+    }
+    .btn:hover { background:#0d47a1; }
+    .bottom { text-align:center; margin-top:16px; font-size:13px; color:#888; }
+    .bottom a { color:#1565c0; text-decoration:none; font-weight:500; }
+    @media(max-width:768px) {
+      .left { display:none; }
+      .right { width:100%; padding:32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <h1>Your Next Home Is Here</h1>
+    <p>Join thousands of students who found affordable housing near their campus through KejaHub.</p>
+  </div>
+  <div class="right">
+    <div class="logo">Keja<span>Hub</span></div>
+    <h2>Create An Account</h2>
+    <p class="subtitle">Fill in your details to get started</p>
+    <% if (error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+    <form method="POST" action="/register" autocomplete="off">
+      <div class="row">
+        <div>
+          <label>Full Name</label>
+          <input type="text" name="name" placeholder="Your full name" required autocomplete="new-password">
+        </div>
+        <div>
+          <label>Phone Number</label>
+          <input type="tel" name="phone" placeholder="Your phone number" autocomplete="new-password">
+        </div>
+      </div>
+      <label>Email Address</label>
+      <input type="email" name="email" placeholder="Your email address" required autocomplete="new-password">
+      <div class="row">
+        <div>
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Create a password" required autocomplete="new-password">
+        </div>
+        <div>
+          <label>Confirm Password</label>
+          <input type="password" name="confirm_password" placeholder="Confirm your password" required autocomplete="new-password">
+        </div>
+      </div>
+      <label>I Am A</label>
+      <div class="role-grid">
+        <label class="role-card" id="card-student">
+          <input type="radio" name="role" value="student" required onclick="selectRole('student')">
+          <span class="icon">🎓</span>
+          <span class="label">Student</span>
+        </label>
+        <label class="role-card" id="card-landlord">
+          <input type="radio" name="role" value="landlord" onclick="selectRole('landlord')">
+          <span class="icon">🏠</span>
+          <span class="label">Landlord</span>
+        </label>
+      </div>
+      <button type="submit" class="btn">Create Account</button>
+    </form>
+    <div class="bottom">Already have an account? <a href="/login">Sign In</a></div>
+  </div>
+  <script>
+    function selectRole(role) {
+      document.getElementById('card-student').classList.remove('selected');
+      document.getElementById('card-landlord').classList.remove('selected');
+      document.getElementById('card-' + role).classList.add('selected');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>House Detail - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/landlord/dashboard">Dashboard</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:900px;margin:32px auto;padding:0 24px">
+    <a href="/landlord/dashboard" style="display:inline-block;margin-bottom:16px;color:#1565c0;text-decoration:none;font-size:14px;font-weight:500">← Back To Dashboard</a>
+    <div class="card">
+      <h2 style="font-size:24px;font-weight:700;color:#1a1a2e;margin-bottom:8px"><%= house.title %></h2>
+      <p style="color:#666;font-size:14px;margin-bottom:4px">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+      <p style="color:#666;font-size:14px;margin-bottom:4px">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+      <div style="font-size:26px;color:#1565c0;font-weight:700;margin:12px 0">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
+      <span class="badge badge-<%= house.status %>"><%= house.status.charAt(0).toUpperCase() + house.status.slice(1) %></span>
+      <% if (house.description) { %>
+        <p style="margin-top:12px;color:#555;font-size:14px;line-height:1.7"><%= house.description %></p>
+      <% } %>
+      <% if (amenities.length > 0) { %>
+        <p style="margin-top:20px;font-weight:600;font-size:14px">Amenities</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+          <% for (var i = 0; i < amenities.length; i++) { %>
+            <span style="background:#e3f2fd;color:#1565c0;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500"><%= amenities[i].name %></span>
+          <% } %>
+        </div>
+      <% } %>
+      <% if (images.length > 0) { %>
+        <p style="margin-top:20px;font-weight:600;font-size:14px">Photos</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px">
+          <% for (var j = 0; j < images.length; j++) { %>
+            <img src="<%= images[j].image_path %>" alt="Photo" style="width:100%;height:160px;object-fit:cover;border-radius:10px">
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Booking And Viewing Requests</h3>
+      <% if (bookings.length === 0) { %>
+        <p style="color:#999;font-size:13px">No Requests Yet</p>
+      <% } else { %>
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Type</th>
+              <th>Visit Date</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (var k = 0; k < bookings.length; k++) { %>
+              <% var b = bookings[k]; %>
+              <tr>
+                <td><%= b.student_name %></td>
+                <td><%= b.type.charAt(0).toUpperCase() + b.type.slice(1) %></td>
+                <td><%= b.visit_date ? b.visit_date : '-' %></td>
+                <td><%= b.message ? b.message : '-' %></td>
+                <td><span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span></td>
+                <td>
+                  <% if (b.status === 'pending') { %>
+                    <form method="POST" action="/landlord/booking/<%= b.id %>" style="display:inline">
+                      <input type="hidden" name="status" value="accepted">
+                      <button class="btn btn-success btn-sm">Accept</button>
+                    </form>
+                    <form method="POST" action="/landlord/booking/<%= b.id %>" style="display:inline;margin-left:4px">
+                      <input type="hidden" name="status" value="declined">
+                      <button class="btn btn-danger btn-sm">Decline</button>
+                    </form>
+                  <% } else { %>
+                    <span style="color:#999;font-size:13px"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landlord Dashboard - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/landlord/add-house">+ Add Listing</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:1000px;margin:32px auto;padding:0 24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <h2 style="font-size:22px;font-weight:700;color:white">Welcome, <%= user.name %></h2>
+      <a href="/landlord/add-house" class="btn">+ Add New Listing</a>
+    </div>
+    <% if (houses.length === 0) { %>
+      <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
+        <p style="font-size:18px;margin-bottom:8px">No Listings Yet</p>
+        <p>Click "Add New Listing" To Post Your First House.</p>
+      </div>
+    <% } else { %>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+        <% for (var i = 0; i < houses.length; i++) { %>
+          <% var house = houses[i]; %>
+          <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
+            <% if (house.primary_image) { %>
+              <img src="<%= house.primary_image %>" alt="House" style="width:100%;height:180px;object-fit:cover">
+            <% } else { %>
+              <div style="width:100%;height:180px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">No Photo Yet</div>
+            <% } %>
+            <div style="padding:16px">
+              <h3 style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:6px"><%= house.title %></h3>
+              <p style="font-size:13px;color:#666;margin-bottom:4px">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+              <p style="font-size:13px;color:#666;margin-bottom:4px">🛏 <%= house.bedrooms %> Bed &nbsp; 🚿 <%= house.bathrooms %> Bath</p>
+              <div style="font-size:18px;color:#1565c0;font-weight:700;margin:8px 0">KES <%= Number(house.rent).toLocaleString() %>/Mo</div>
+              <span class="badge badge-<%= house.status %>"><%= house.status.charAt(0).toUpperCase() + house.status.slice(1) %></span>
+              <p style="font-size:12px;color:#888;margin-top:6px"><%= house.booking_count %> Booking Request(s)</p>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <a href="/landlord/house/<%= house.id %>" class="btn btn-sm">View</a>
+                <form method="POST" action="/landlord/house/<%= house.id %>/delete" style="display:inline">
+                  <button class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

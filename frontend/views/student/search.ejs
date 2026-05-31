@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Houses - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/student/dashboard">Home</a>
+      <a href="/student/search">Search</a>
+      <a href="/student/bookings">My Bookings</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:1000px;margin:32px auto;padding:0 24px">
+    <div class="card">
+      <form action="/student/search" method="GET">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end">
+          <div>
+            <label>Search</label>
+            <input type="text" name="keyword" placeholder="Location, title..." value="<%= filters.keyword || '' %>">
+          </div>
+          <div>
+            <label>Min Rent (KES)</label>
+            <input type="number" name="min_rent" placeholder="e.g. 3000" value="<%= filters.min_rent || '' %>">
+          </div>
+          <div>
+            <label>Max Rent (KES)</label>
+            <input type="number" name="max_rent" placeholder="e.g. 15000" value="<%= filters.max_rent || '' %>">
+          </div>
+          <div>
+            <label>Bedrooms</label>
+            <select name="bedrooms">
+              <option value="">Any</option>
+              <option value="1" <%= filters.bedrooms=='1'?'selected':'' %>>1</option>
+              <option value="2" <%= filters.bedrooms=='2'?'selected':'' %>>2</option>
+              <option value="3" <%= filters.bedrooms=='3'?'selected':'' %>>3</option>
+              <option value="4" <%= filters.bedrooms=='4'?'selected':'' %>>4+</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" class="btn">Filter</button>
+            <a href="/student/search" class="btn" style="background:#6c757d">Clear</a>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:18px;font-weight:600;color:#1a1a2e"><%= houses.length %> Listing(s) Found</h3>
+    </div>
+    <% if (houses.length === 0) { %>
+      <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
+        <p style="font-size:18px;margin-bottom:8px">No Houses Match Your Search</p>
+        <p>Try Different Filters</p>
+      </div>
+    <% } else { %>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+        <% for (var i = 0; i < houses.length; i++) { %>
+          <% var house = houses[i]; %>
+          <a href="/student/house/<%= house.id %>" class="house-card">
+            <% if (house.primary_image) { %>
+              <img src="<%= house.primary_image %>" alt="<%= house.title %>">
+            <% } else { %>
+              <div class="img-placeholder">No Photo Yet</div>
+            <% } %>
+            <div class="card-body">
+              <h4><%= house.title %></h4>
+              <p>📍 <%= house.location %></p>
+              <p>🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+              <div class="rent">KES <%= Number(house.rent).toLocaleString() %>/Mo</div>
+              <% if (house.avg_rating) { %>
+                <span class="rating">★ <%= Number(house.avg_rating).toFixed(1) %> (<%= house.review_count %> Reviews)</span>
+              <% } %>
+            </div>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

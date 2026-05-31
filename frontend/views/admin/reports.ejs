@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="admin-nav">
+    <h1>KejaHub Admin</h1>
+    <div>
+      <a href="/admin/dashboard">Listings</a>
+      <a href="/admin/users">Users</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:1000px;margin:32px auto;padding:0 24px">
+    <h2 style="font-size:20px;font-weight:600;color:#1a1a2e;margin-bottom:16px">Reported Listings</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>House</th>
+          <th>Reported By</th>
+          <th>Reason</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (reports.length === 0) { %>
+          <tr>
+            <td colspan="6" style="text-align:center;color:#999;padding:24px">No Reports Yet</td>
+          </tr>
+        <% } else { %>
+          <% for (var i = 0; i < reports.length; i++) { %>
+            <% var r = reports[i]; %>
+            <tr>
+              <td><%= r.house_title %></td>
+              <td><%= r.reported_by_name %></td>
+              <td><%= r.reason %></td>
+              <td><%= r.created_at %></td>
+              <td>
+                <span class="badge badge-<%= r.status %>">
+                  <%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %>
+                </span>
+              </td>
+              <td>
+                <% if (r.status === 'open') { %>
+                  <form method="POST" action="/admin/reports/<%= r.id %>/resolve">
+                    <button class="btn btn-success btn-sm">Resolve</button>
+                  </form>
+                <% } else { %>
+                  <span style="color:#999;font-size:13px">Resolved</span>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= house.title %> - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/student/dashboard">Home</a>
+      <a href="/student/search">Search</a>
+      <a href="/student/bookings">My Bookings</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:900px;margin:32px auto;padding:0 24px">
+    <a href="/student/search" style="display:inline-block;margin-bottom:16px;color:#1565c0;text-decoration:none;font-size:14px;font-weight:500">← Back To Search</a>
+
+    <% if (typeof query !== 'undefined' && query.success === 'requested') { %>
+      <div class="alert alert-success">Request Sent Successfully! The Landlord Will Get Back To You.</div>
+    <% } %>
+    <% if (typeof query !== 'undefined' && query.success === 'reviewed') { %>
+      <div class="alert alert-success">Review Submitted Successfully!</div>
+    <% } %>
+    <% if (typeof query !== 'undefined' && query.error === 'already_requested') { %>
+      <div class="alert alert-error">You Already Have A Pending Request For This House.</div>
+    <% } %>
+    <% if (typeof query !== 'undefined' && query.error === 'already_reviewed') { %>
+      <div class="alert alert-error">You Have Already Reviewed This House.</div>
+    <% } %>
+
+    <div class="card">
+      <h2 style="font-size:24px;font-weight:700;color:#1a1a2e;margin-bottom:8px"><%= house.title %></h2>
+      <p style="color:#666;font-size:14px;margin-bottom:4px">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+      <p style="color:#666;font-size:14px;margin-bottom:4px">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+      <% if (avgRating) { %>
+        <p style="color:#f57f17;font-size:14px;margin-bottom:4px">★ <%= avgRating %> Average Rating</p>
+      <% } %>
+      <div style="font-size:28px;color:#1565c0;font-weight:700;margin:12px 0">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
+      <% if (house.description) { %>
+        <p style="color:#555;font-size:14px;line-height:1.7;margin-top:8px"><%= house.description %></p>
+      <% } %>
+      <% if (amenities.length > 0) { %>
+        <p style="margin-top:20px;font-weight:600;font-size:14px;color:#1a1a2e">Amenities</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+          <% for (var i = 0; i < amenities.length; i++) { %>
+            <span style="background:#e3f2fd;color:#1565c0;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500"><%= amenities[i].name %></span>
+          <% } %>
+        </div>
+      <% } %>
+      <% if (images.length > 0) { %>
+        <p style="margin-top:20px;font-weight:600;font-size:14px;color:#1a1a2e">Photos</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px">
+          <% for (var j = 0; j < images.length; j++) { %>
+            <img src="<%= images[j].image_path %>" alt="Photo" style="width:100%;height:160px;object-fit:cover;border-radius:10px">
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Landlord Contact</h3>
+      <div style="background:#f5f7fa;padding:16px;border-radius:10px">
+        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Name:</strong> <%= landlord.name %></p>
+        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Email:</strong> <%= landlord.email %></p>
+        <p style="font-size:14px;color:#444"><strong>Phone:</strong> <%= landlord.phone ? landlord.phone : 'Not Provided' %></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Send A Request</h3>
+      <form action="/student/booking" method="POST">
+        <input type="hidden" name="house_id" value="<%= house.id %>">
+        <label>Request Type</label>
+        <select name="type">
+          <option value="viewing">Viewing Request</option>
+          <option value="booking">Booking Request</option>
+        </select>
+        <label>Preferred Visit Date</label>
+        <input type="date" name="visit_date">
+        <label>Message To Landlord</label>
+        <textarea name="message" placeholder="Introduce yourself and ask any questions..." style="height:90px;resize:vertical"></textarea>
+        <button type="submit" class="btn" style="margin-top:16px">Send Request</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Reviews (<%= reviews.length %>)</h3>
+      <% if (reviews.length === 0) { %>
+        <p style="color:#999;font-size:13px">No Reviews Yet. Be The First To Review!</p>
+      <% } else { %>
+        <% for (var k = 0; k < reviews.length; k++) { %>
+          <% var review = reviews[k]; %>
+          <div style="border-bottom:1px solid #f0f0f0;padding:14px 0">
+            <p style="font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:4px"><%= review.student_name %></p>
+            <div style="color:#f57f17;font-size:16px;margin-bottom:4px">
+              <% for (var s = 0; s < review.rating; s++) { %>★<% } %>
+            </div>
+            <% if (review.comment) { %>
+              <p style="font-size:13px;color:#666"><%= review.comment %></p>
+            <% } %>
+          </div>
+        <% } %>
+      <% } %>
+      <div style="margin-top:24px;border-top:1px solid #f0f0f0;padding-top:24px">
+        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Leave A Review</h3>
+        <form action="/student/review" method="POST">
+          <input type="hidden" name="house_id" value="<%= house.id %>">
+          <label>Rating</label>
+          <select name="rating">
+            <option value="5">★★★★★ Excellent</option>
+            <option value="4">★★★★ Good</option>
+            <option value="3">★★★ Average</option>
+            <option value="2">★★ Poor</option>
+            <option value="1">★ Terrible</option>
+          </select>
+          <label>Comment</label>
+          <textarea name="comment" placeholder="Share your experience..." style="height:80px;resize:vertical"></textarea>
+          <button type="submit" class="btn" style="margin-top:16px">Submit Review</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Report This Listing</h3>
+      <form action="/student/report" method="POST">
+        <input type="hidden" name="house_id" value="<%= house.id %>">
+        <label>Reason For Reporting</label>
+        <textarea name="reason" placeholder="Describe the issue with this listing..." style="height:80px;resize:vertical" required></textarea>
+        <button type="submit" class="btn btn-outline" style="margin-top:16px">Report Listing</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

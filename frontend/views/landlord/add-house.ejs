@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Listing - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/landlord/dashboard">Dashboard</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:700px;margin:32px auto;padding:0 24px">
+    <a href="/landlord/dashboard" style="display:inline-block;margin-bottom:16px;color:#1565c0;text-decoration:none;font-size:14px;font-weight:500">← Back To Dashboard</a>
+    <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px">Add A New Listing</h2>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <div class="card">
+      <form method="POST" action="/landlord/add-house" enctype="multipart/form-data">
+        <label>Title</label>
+        <input type="text" name="title" placeholder="e.g. Cozy 1-Bedroom Near Campus" required>
+        <label>Description</label>
+        <textarea name="description" placeholder="Describe the house..." style="height:100px;resize:vertical"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Monthly Rent (KES)</label>
+            <input type="number" name="rent" placeholder="e.g. 8000" required>
+          </div>
+          <div>
+            <label>Location / Area</label>
+            <input type="text" name="location" placeholder="e.g. Rongai" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Estate / Street</label>
+            <input type="text" name="estate" placeholder="e.g. Malibu Estate">
+          </div>
+          <div>
+            <label>Bedrooms</label>
+            <select name="bedrooms">
+              <option value="1">1 Bedroom</option>
+              <option value="2">2 Bedrooms</option>
+              <option value="3">3 Bedrooms</option>
+              <option value="4">4+ Bedrooms</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Bathrooms</label>
+            <select name="bathrooms">
+              <option value="1">1 Bathroom</option>
+              <option value="2">2 Bathrooms</option>
+              <option value="3">3+ Bathrooms</option>
+            </select>
+          </div>
+        </div>
+        <label>Amenities</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="WiFi" style="width:auto"> WiFi</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Water" style="width:auto"> Water</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Electricity" style="width:auto"> Electricity</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Parking" style="width:auto"> Parking</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Security" style="width:auto"> Security</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="CCTV" style="width:auto"> CCTV</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Furnished" style="width:auto"> Furnished</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Kitchen" style="width:auto"> Kitchen</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Balcony" style="width:auto"> Balcony</label>
+        </div>
+        <label>House Photos (Up To 10)</label>
+        <input type="file" name="images" multiple accept="image/*">
+        <button type="submit" class="btn" style="margin-top:24px;width:100%;padding:13px">Submit Listing</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

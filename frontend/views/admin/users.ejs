@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="admin-nav">
+    <h1>KejaHub Admin</h1>
+    <div>
+      <a href="/admin/dashboard">Listings</a>
+      <a href="/admin/users">Users</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:1000px;margin:32px auto;padding:0 24px">
+    <h2 style="font-size:20px;font-weight:600;color:#1a1a2e;margin-bottom:16px">Manage Users</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (users.length === 0) { %>
+          <tr>
+            <td colspan="6" style="text-align:center;color:#999;padding:24px">No Users Yet</td>
+          </tr>
+        <% } else { %>
+          <% for (var i = 0; i < users.length; i++) { %>
+            <% var u = users[i]; %>
+            <tr>
+              <td><%= u.name %></td>
+              <td><%= u.email %></td>
+              <td>
+                <span class="badge badge-<%= u.role %>">
+                  <%= u.role.charAt(0).toUpperCase() + u.role.slice(1) %>
+                </span>
+              </td>
+              <td><%= u.created_at %></td>
+             <td style="font-weight:500"></td>
+              <% if (u.is_active) { %>
+  <span style="color:#2e7d32">Active</span>
+<% } else { %>
+  <span style="color:#c62828">Deactivated</span>
+<% } %>  
+              </td>
+              <td>
+                <form method="POST" action="/admin/users/<%= u.id %>/toggle">
+                  <% if (u.is_active) { %>
+                    <button class="btn btn-danger btn-sm">Deactivate</button>
+                  <% } else { %>
+                    <button class="btn btn-success btn-sm">Activate</button>
+                  <% } %>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bookings - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <h1>KejaHub</h1>
+    <div>
+      <a href="/student/dashboard">Home</a>
+      <a href="/student/search">Search</a>
+      <a href="/student/bookings">My Bookings</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+  <div style="max-width:900px;margin:32px auto;padding:0 24px">
+    <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px">My Booking Requests</h2>
+    <% if (bookings.length === 0) { %>
+      <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
+        <p style="font-size:18px;margin-bottom:8px">No Requests Yet</p>
+        <p>Search For Houses And Send A Viewing Or Booking Request.</p>
+        <a href="/student/search" class="btn" style="margin-top:16px;display:inline-block">Search Houses</a>
+      </div>
+    <% } else { %>
+      <% for (var i = 0; i < bookings.length; i++) { %>
+        <% var b = bookings[i]; %>
+        <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:16px;display:flex">
+          <% if (b.primary_image) { %>
+            <img src="<%= b.primary_image %>" alt="House" style="width:140px;height:120px;object-fit:cover;flex-shrink:0">
+          <% } else { %>
+            <div style="width:140px;height:120px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;flex-shrink:0">No Photo</div>
+          <% } %>
+          <div style="padding:16px;flex:1">
+            <h3 style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:4px"><%= b.house_title %></h3>
+            <p style="font-size:13px;color:#666;margin-bottom:4px">📍 <%= b.location %></p>
+            <p style="font-size:16px;color:#1565c0;font-weight:700;margin-bottom:4px">KES <%= Number(b.rent).toLocaleString() %>/Mo</p>
+            <p style="font-size:13px;color:#666;margin-bottom:4px">Type: <%= b.type.charAt(0).toUpperCase() + b.type.slice(1) %></p>
+            <% if (b.visit_date) { %><p style="font-size:13px;color:#666;margin-bottom:4px">Visit Date: <%= b.visit_date %></p><% } %>
+            <span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span>
+          </div>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+</body>
+</html>
