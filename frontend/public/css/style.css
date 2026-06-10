@@ -213,9 +213,10 @@ tr:hover td { background: rgba(250,250,250,0.8); }
   font-size: 13px;
 }
 
-house-card .card-body { padding: 16px; }
-.house-card .card-body h4 { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+.house-card .card-body { padding: 16px; }
+.house-card .card-body h4 { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .house-card .card-body p { font-size: 13px; color: #666; margin-bottom: 4px; }
+.house-card .card-body p:first-of-type { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .house-card .rent { font-size: 18px; color: #1565c0; font-weight: 700; margin: 8px 0; }
 .house-card .rating { font-size: 12px; color: #f57f17; }
 
@@ -260,3 +261,167 @@ house-card .card-body { padding: 16px; }
 }
 
 .auth-body::before { display: none; }
+
+/* ── Toast Notifications ── */
+#toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 300px;
+  max-width: 400px;
+  pointer-events: none;
+}
+.toast {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  padding: 14px 16px 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: all;
+  animation: toastIn 0.3s ease;
+  font-size: 14px;
+  line-height: 1.4;
+  border-left: 4px solid #ccc;
+  font-family: 'Inter', sans-serif;
+}
+.toast-success { border-left-color: #2e7d32; }
+.toast-error   { border-left-color: #c62828; }
+.toast-warning { border-left-color: #ff6f00; }
+.toast-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.toast-dismiss:hover { color: #333; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: none; }
+}
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.35;
+  transform-origin: left;
+  animation: toastBar 5s linear forwards;
+}
+.toast-success .toast-progress { background: #2e7d32; }
+.toast-error   .toast-progress { background: #c62828; }
+.toast-warning .toast-progress { background: #ff6f00; }
+@keyframes toastBar {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+@media (max-width: 480px) {
+  #toast-container { right: 12px; left: 12px; min-width: auto; }
+}
+
+/* ── Form Validation ── */
+.field-error {
+  display: block;
+  font-size: 12px;
+  color: #c62828;
+  margin-top: 3px;
+  min-height: 16px;
+}
+input.field-invalid, select.field-invalid, textarea.field-invalid { border-color: #c62828 !important; }
+input.field-valid,   select.field-valid,   textarea.field-valid   { border-color: #2e7d32 !important; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+/* Password strength meter */
+.strength-segments { display: flex; gap: 4px; margin: 6px 0 4px; }
+.strength-seg { height: 4px; flex: 1; border-radius: 2px; background: #e0e0e0; transition: background 0.3s; }
+.strength-label { font-size: 11px; color: #888; margin: 2px 0; }
+.strength-checklist { list-style: none; padding: 0; margin: 6px 0 0; }
+.strength-checklist li { font-size: 12px; color: #aaa; padding: 2px 0; }
+.strength-checklist li::before { content: '✗ '; color: #c62828; }
+.strength-checklist li.met { color: #2e7d32; }
+.strength-checklist li.met::before { content: '✓ '; }
+
+/* ── Skeleton Loading ── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.skeleton {
+  background: #e0e0e0;
+  border-radius: 4px;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+.skeleton-card {
+  background: rgba(255,255,255,0.92);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+.skeleton-img  { width: 100%; height: 180px; background: #d8d8d8; animation: skeletonPulse 1.5s ease-in-out infinite; }
+.skeleton-line { height: 14px; margin: 8px 16px; background: #e0e0e0; border-radius: 4px; animation: skeletonPulse 1.5s ease-in-out infinite; }
+.skeleton-line.short  { width: 55%; }
+.skeleton-line.medium { width: 75%; }
+.skeleton-line.full   { width: calc(100% - 32px); }
+.skeleton-row  { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0; align-items: center; }
+.skeleton-row-cell { height: 14px; flex: 1; background: #e0e0e0; border-radius: 4px; animation: skeletonPulse 1.5s ease-in-out infinite; }
+.skeleton-stat { border-radius: 16px; padding: 24px; text-align: center; min-height: 90px; background: rgba(255,255,255,0.92); }
+.skeleton-stat-val { height: 36px; width: 80px; margin: 0 auto 8px; background: #e0e0e0; border-radius: 6px; animation: skeletonPulse 1.5s ease-in-out infinite; }
+.skeleton-stat-lbl { height: 12px; width: 100px; margin: 0 auto; background: #e0e0e0; border-radius: 4px; animation: skeletonPulse 1.5s ease-in-out infinite; }
+
+/* ── Password show/hide wrapper (profile pages use style.css) ── */
+.pwd-wrap { position: relative; }
+.pwd-wrap input { padding-right: 42px; }
+.pwd-eye {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; line-height: 0;
+}
+.pwd-eye:hover { color: #1565c0; }
+
+/* ── Profile avatar ── */
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 700; color: white;
+}
+
+/* ── Admin Dashboard extras ── */
+.stats-grid-6 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media (max-width: 900px) { .stats-grid-6 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .stats-grid-6 { grid-template-columns: 1fr; } }
+.section-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  margin: 32px 0 14px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.stat-card.warn  h3 { color: #f57f17; }
+.stat-card.danger h3 { color: #c62828; }
+
+/* ── Required field asterisk ── */
+label:has(+ input[required])::after,
+label:has(+ textarea[required])::after,
+label:has(+ select[required])::after,
+label:has(+ .pwd-wrap > input[required])::after {
+  content: ' *';
+  color: #c62828;
+  font-weight: 700;
+}

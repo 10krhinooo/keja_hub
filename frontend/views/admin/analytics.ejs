@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics - KejaHub Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+    @media (max-width:800px) { .analytics-grid { grid-template-columns:1fr; } }
+    .chart-box {
+      background:rgba(255,255,255,0.92); border-radius:16px;
+      padding:24px; box-shadow:0 4px 24px rgba(0,0,0,0.1);
+      backdrop-filter:blur(12px);
+    }
+    .chart-box h3 {
+      font-size:15px; font-weight:700; color:#1a1a2e;
+      margin-bottom:18px; padding-bottom:10px;
+      border-bottom:1.5px solid #f0f0f0;
+    }
+    .chart-box svg { display:block; width:100%; height:auto; }
+    .full-width { grid-column:1/-1; }
+    .empty-state { text-align:center; color:#999; font-size:13px; padding:24px; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav-admin') %>
+  <div style="max-width:1100px;margin:32px auto;padding:0 24px">
+    <h2 style="font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:24px">Analytics</h2>
+
+    <div class="analytics-grid">
+
+      <!-- Chart 1: Listings per Month (Line Chart) -->
+      <div class="chart-box full-width">
+        <h3>Listings Added — Last 6 Months</h3>
+        <% if (!listingsPerMonth || listingsPerMonth.length === 0) { %>
+          <p class="empty-state">No listing data available yet.</p>
+        <% } else { %>
+          <%
+            var lpm = listingsPerMonth;
+            var lpmMax = Math.max.apply(null, lpm.map(function(d){ return d.count; }));
+            if (lpmMax === 0) lpmMax = 1;
+            var lpmN = lpm.length;
+            var plotX1 = 60, plotX2 = 560, plotY1 = 20, plotY2 = 130;
+            var xStep = lpmN > 1 ? (plotX2 - plotX1) / (lpmN - 1) : 0;
+            var pts = lpm.map(function(d, i) {
+              var x = lpmN === 1 ? (plotX1 + plotX2) / 2 : plotX1 + i * xStep;
+              var y = plotY2 - Math.round((d.count / lpmMax) * (plotY2 - plotY1));
+              return { x: x, y: y, month: d.month, count: d.count };
+            });
+            var polyPts = pts.map(function(p){ return p.x+','+p.y; }).join(' ');
+          %>
+          <svg role="img" aria-label="Listings added per month line chart" viewBox="0 0 620 170">
+            <!-- Y-axis -->
+            <line x1="58" y1="15" x2="58" y2="135" stroke="#ddd" stroke-width="1"/>
+            <!-- X-axis -->
+            <line x1="58" y1="135" x2="570" y2="135" stroke="#ddd" stroke-width="1"/>
+            <!-- Grid lines -->
+            <% for (var gi = 0; gi <= 4; gi++) { %>
+              <% var gy = plotY2 - Math.round(gi/4*(plotY2-plotY1)); %>
+              <line x1="58" y1="<%= gy %>" x2="570" y2="<%= gy %>" stroke="#f0f0f0" stroke-width="1" stroke-dasharray="4,4"/>
+              <text x="52" y="<%= gy+4 %>" text-anchor="end" font-size="9" fill="#999" font-family="Inter,sans-serif"><%= Math.round(gi/4*lpmMax) %></text>
+            <% } %>
+            <!-- Line -->
+            <polyline points="<%= polyPts %>" fill="none" stroke="#1565c0" stroke-width="2.5" stroke-linejoin="round"/>
+            <!-- Points and labels -->
+            <% for (var pi = 0; pi < pts.length; pi++) { %>
+              <% var pt = pts[pi]; %>
+              <circle cx="<%= pt.x %>" cy="<%= pt.y %>" r="4" fill="#1565c0" stroke="white" stroke-width="1.5"/>
+              <text x="<%= pt.x %>" y="<%= pt.y - 8 %>" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600" font-family="Inter,sans-serif"><%= pt.count %></text>
+              <text x="<%= pt.x %>" y="150" text-anchor="middle" font-size="9" fill="#888" font-family="Inter,sans-serif"><%= pt.month %></text>
+            <% } %>
+          </svg>
+        <% } %>
+      </div>
+
+      <!-- Chart 2: Reviews by Rating (Vertical Bar Chart) -->
+      <div class="chart-box">
+        <h3>Reviews by Star Rating</h3>
+        <% if (!reviewsByRating || reviewsByRating.length === 0) { %>
+          <p class="empty-state">No review data available yet.</p>
+        <% } else { %>
+          <%
+            var ratingColors = ['#c62828','#e65100','#f57f17','#558b2f','#2e7d32'];
+            var rMax = Math.max.apply(null, reviewsByRating.map(function(r){ return r.count; }));
+            if (rMax === 0) rMax = 1;
+            var allRatings = [1,2,3,4,5];
+            var ratingMap = {};
+            reviewsByRating.forEach(function(r){ ratingMap[r.rating] = r.count; });
+          %>
+          <svg role="img" aria-label="Reviews by star rating bar chart" viewBox="0 0 300 180">
+            <!-- Y-axis -->
+            <line x1="35" y1="10" x2="35" y2="130" stroke="#ddd" stroke-width="1"/>
+            <!-- X-axis -->
+            <line x1="35" y1="130" x2="285" y2="130" stroke="#ddd" stroke-width="1"/>
+            <% for (var ri = 0; ri < 5; ri++) { %>
+              <% var cnt = ratingMap[ri+1] || 0; %>
+              <% var bh = Math.round((cnt/rMax)*100); %>
+              <% var bx = 42 + ri*48; var by = 130 - bh; %>
+              <rect x="<%= bx %>" y="<%= by %>" width="32" height="<%= bh %>" rx="3" fill="<%= ratingColors[ri] %>"/>
+              <% if (cnt > 0) { %>
+                <text x="<%= bx+16 %>" y="<%= by-4 %>" text-anchor="middle" font-size="10" fill="#333" font-family="Inter,sans-serif"><%= cnt %></text>
+              <% } %>
+              <text x="<%= bx+16 %>" y="148" text-anchor="middle" font-size="11" fill="#666" font-family="Inter,sans-serif">★ <%= ri+1 %></text>
+            <% } %>
+            <!-- Y axis label -->
+            <text x="10" y="75" text-anchor="middle" font-size="9" fill="#999" font-family="Inter,sans-serif" transform="rotate(-90,10,75)">Count</text>
+          </svg>
+        <% } %>
+      </div>
+
+      <!-- Chart 3: Top Locations by Listing Count (Horizontal Bar Chart) -->
+      <div class="chart-box">
+        <h3>Top Locations by Listings</h3>
+        <% if (!topLocations || topLocations.length === 0) { %>
+          <p class="empty-state">No location data available yet.</p>
+        <% } else { %>
+          <%
+            var tlMax = Math.max.apply(null, topLocations.map(function(l){ return l.count; }));
+            if (tlMax === 0) tlMax = 1;
+          %>
+          <svg role="img" aria-label="Top locations by listing count horizontal bar chart"
+               viewBox="0 0 380 <%= topLocations.length * 30 + 20 %>" style="width:100%;height:auto">
+            <% for (var tli = 0; tli < topLocations.length; tli++) { %>
+              <% var tl = topLocations[tli]; var tlw = Math.round((tl.count/tlMax)*230); %>
+              <text x="108" y="<%= 20 + tli*30 %>" text-anchor="end" font-size="11" fill="#555" font-family="Inter,sans-serif"><%= tl.location %></text>
+              <rect x="112" y="<%= 8 + tli*30 %>" width="<%= tlw %>" height="16" rx="3" fill="#1565c0"/>
+              <text x="<%= 116 + tlw %>" y="<%= 20 + tli*30 %>" font-size="10" fill="#333" font-family="Inter,sans-serif"><%= tl.count %></text>
+            <% } %>
+          </svg>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

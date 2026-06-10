@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listings Management - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/skeleton.js"></script>
+  <style>
+    .reject-form { display:none; margin-top:8px; }
+    .reject-form textarea { width:100%; padding:8px; border:1.5px solid #e0e0e0; border-radius:6px; font-size:13px; resize:vertical; height:60px; margin-bottom:6px; font-family:inherit; }
+    .table-wrap { overflow-x:auto; }
+    .truncate { max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.12); transition:background .15s; }
+    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
+    .filter-tab.active { background:white; color:#1a1a2e; }
+    .pagination { display:flex; gap:4px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
+    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:rgba(255,255,255,0.92); color:#1a1a2e; }
+    .pagination a:hover { background:#e3f2fd; }
+    .pagination a.pg-active { background:#1565c0; color:white; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav-admin') %>
+  <div style="max-width:1100px;margin:32px auto;padding:0 24px">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;color:#1a1a2e">
+          <% if (filter==='pending') { %>Pending Listings<% } else if (filter==='approved') { %>Approved Listings<% } else if (filter==='rejected') { %>Rejected Listings<% } else { %>All Listings<% } %>
+        </h2>
+        <p style="font-size:13px;color:#666;margin-top:2px"><%= totalCount %> listing(s)</p>
+      </div>
+    </div>
+
+    <!-- Search + filter tabs -->
+    <form method="GET" action="/admin/listings" style="margin-bottom:10px">
+      <input type="hidden" name="filter" value="<%= filter %>">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" name="keyword" value="<%= keyword %>" placeholder="Search title, location, landlord..." style="max-width:320px;margin-top:0">
+        <button type="submit" class="btn btn-sm">Search</button>
+        <a href="/admin/listings<%= filter ? '?filter='+filter : '' %>" class="btn btn-sm" style="background:#6c757d">Clear</a>
+      </div>
+    </form>
+    <div class="filter-tabs">
+      <a href="/admin/listings<%= keyword ? '?keyword='+encodeURIComponent(keyword) : '' %>"          class="filter-tab <%= filter===''?'active':'' %>">All</a>
+      <a href="/admin/listings?filter=pending<%= keyword ? '&keyword='+encodeURIComponent(keyword) : '' %>"  class="filter-tab <%= filter==='pending'?'active':'' %>">Pending</a>
+      <a href="/admin/listings?filter=approved<%= keyword ? '&keyword='+encodeURIComponent(keyword) : '' %>" class="filter-tab <%= filter==='approved'?'active':'' %>">Approved</a>
+      <a href="/admin/listings?filter=rejected<%= keyword ? '&keyword='+encodeURIComponent(keyword) : '' %>" class="filter-tab <%= filter==='rejected'?'active':'' %>">Rejected</a>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:8px">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Landlord</th>
+            <th>Location</th>
+            <th>Rent</th>
+            <th>Status</th>
+            <th>Date Added</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (listings.length === 0) { %>
+            <tr><td colspan="7" style="text-align:center;color:#999;padding:24px">No listings found</td></tr>
+          <% } else { %>
+            <% for (var i = 0; i < listings.length; i++) { %>
+              <% var h = listings[i]; %>
+              <tr>
+                <td><a href="/admin/house/<%= h.id %>" style="color:#1565c0;text-decoration:none;font-weight:500" class="truncate" style="display:block"><%= h.title %></a></td>
+                <td><%= h.landlord_name %><br><span style="color:#999;font-size:11px"><%= h.landlord_email %></span></td>
+                <td><%= h.location %></td>
+                <td>KES <%= Number(h.rent).toLocaleString() %></td>
+                <td><span class="badge badge-<%= h.status %>"><%= h.status.charAt(0).toUpperCase() + h.status.slice(1) %></span></td>
+                <td style="font-size:12px;color:#888"><%= h.created_at ? h.created_at.slice(0,10) : '-' %></td>
+                <td>
+                  <% if (h.status === 'pending') { %>
+                    <form method="POST" action="/admin/house/<%= h.id %>/approve" style="display:inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="btn btn-success btn-sm">Approve</button>
+                    </form>
+                    <span onclick="toggleReject(<%= h.id %>)" style="margin-left:4px">
+                      <button type="button" class="btn btn-danger btn-sm">Reject</button>
+                    </span>
+                    <form method="POST" action="/admin/house/<%= h.id %>/reject" class="reject-form" id="reject-<%= h.id %>">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <textarea name="rejection_reason" placeholder="Reason for rejection..."></textarea>
+                      <button type="submit" class="btn btn-danger btn-sm">Confirm Reject</button>
+                    </form>
+                  <% } else { %>
+                    <a href="/admin/house/<%= h.id %>" class="btn btn-sm" style="background:#6c757d">View</a>
+                  <% } %>
+                </td>
+              </tr>
+            <% } %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (totalPages > 1) { %>
+      <div class="pagination">
+        <% if (page > 1) { %>
+          <a href="/admin/listings?filter=<%= filter %>&keyword=<%= encodeURIComponent(keyword) %>&page=<%= page-1 %>">‹ Prev</a>
+        <% } %>
+        <% for (var p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) { %>
+          <a href="/admin/listings?filter=<%= filter %>&keyword=<%= encodeURIComponent(keyword) %>&page=<%= p %>" class="<%= p===page?'pg-active':'' %>"><%= p %></a>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a href="/admin/listings?filter=<%= filter %>&keyword=<%= encodeURIComponent(keyword) %>&page=<%= page+1 %>">Next ›</a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (query && query.success) { %>
+  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
+  <% } %>
+  <% if (query && query.error) { %>
+  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
+  <% } %>
+  <script>
+    function toggleReject(id) {
+      var form = document.getElementById('reject-' + id);
+      form.style.display = form.style.display === 'block' ? 'none' : 'block';
+    }
+  </script>
+</body>
+</html>

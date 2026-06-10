@@ -5,81 +5,191 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search Houses - KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/skeleton.js"></script>
+  <style>
+    .search-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:12px; align-items:end; }
+    @media (max-width:900px) { .search-grid { grid-template-columns:1fr 1fr 1fr; } }
+    @media (max-width:600px) { .search-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:440px) { .search-grid { grid-template-columns:1fr; } }
+    .amenity-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px; margin-top:4px; }
+    .amenity-label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:400; margin:0; cursor:pointer; padding:6px 10px; border-radius:6px; border:1.5px solid #e0e0e0; background:white; transition:all .15s; }
+    .amenity-label:hover { border-color:#1565c0; background:#f0f6ff; }
+    .amenity-label input { width:auto; margin:0; }
+    .amenity-label input:checked + span { color:#1565c0; font-weight:600; }
+    .amenity-label:has(input:checked) { border-color:#1565c0; background:#e3f2fd; }
+    .pagination { display:flex; gap:4px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+    .pagination a { display:inline-block; padding:7px 13px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:rgba(255,255,255,0.92); color:#1a1a2e; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:background .15s; }
+    .pagination a:hover { background:#e3f2fd; }
+    .pagination a.pg-active { background:#1565c0; color:white; }
+    .results-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+    details summary { cursor:pointer; font-size:13px; font-weight:500; color:#1565c0; list-style:none; }
+    details summary::after { content:' ▾'; }
+    details[open] summary::after { content:' ▴'; }
+  </style>
 </head>
 <body>
-  <nav>
-    <h1>KejaHub</h1>
-    <div>
-      <a href="/student/dashboard">Home</a>
-      <a href="/student/search">Search</a>
-      <a href="/student/bookings">My Bookings</a>
-      <a href="/logout">Logout</a>
-    </div>
-  </nav>
+  <%- include('../partials/nav-student') %>
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
+
+    <!-- Filter card -->
     <div class="card">
       <form action="/student/search" method="GET">
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:12px;align-items:end">
+        <!-- Main filter row -->
+        <div class="search-grid">
           <div>
             <label>Search</label>
-            <input type="text" name="keyword" placeholder="Location, title..." value="<%= filters.keyword || '' %>">
+            <input type="text" name="keyword" placeholder="Estate, title, keyword..." value="<%= filters.keyword || '' %>">
+          </div>
+          <div>
+            <label>Location</label>
+            <select name="location">
+              <option value="">Any Location</option>
+              <% if (typeof locations !== 'undefined') { %>
+                <% for (var li = 0; li < locations.length; li++) { %>
+                  <option value="<%= locations[li] %>" <%= filters.location === locations[li] ? 'selected' : '' %>><%= locations[li] %></option>
+                <% } %>
+              <% } %>
+            </select>
           </div>
           <div>
             <label>Min Rent (KES)</label>
-            <input type="number" name="min_rent" placeholder="e.g. 3000" value="<%= filters.min_rent || '' %>">
+            <input type="number" name="min_rent" placeholder="e.g. 3000" min="0" value="<%= filters.min_rent || '' %>">
           </div>
           <div>
             <label>Max Rent (KES)</label>
-            <input type="number" name="max_rent" placeholder="e.g. 15000" value="<%= filters.max_rent || '' %>">
+            <input type="number" name="max_rent" placeholder="e.g. 20000" min="0" value="<%= filters.max_rent || '' %>">
           </div>
           <div>
             <label>Bedrooms</label>
             <select name="bedrooms">
               <option value="">Any</option>
-              <option value="1" <%= filters.bedrooms=='1'?'selected':'' %>>1</option>
-              <option value="2" <%= filters.bedrooms=='2'?'selected':'' %>>2</option>
-              <option value="3" <%= filters.bedrooms=='3'?'selected':'' %>>3</option>
-              <option value="4" <%= filters.bedrooms=='4'?'selected':'' %>>4+</option>
+              <option value="1" <%= filters.bedrooms=='1'?'selected':'' %>>1 Bedroom</option>
+              <option value="2" <%= filters.bedrooms=='2'?'selected':'' %>>2 Bedrooms</option>
+              <option value="3" <%= filters.bedrooms=='3'?'selected':'' %>>3 Bedrooms</option>
+              <option value="4" <%= filters.bedrooms=='4'?'selected':'' %>>4+ Bedrooms</option>
             </select>
           </div>
-          <div style="display:flex;gap:8px">
-            <button type="submit" class="btn">Filter</button>
-            <a href="/student/search" class="btn" style="background:#6c757d">Clear</a>
+        </div>
+
+        <!-- Amenities (collapsible) -->
+        <details style="margin-top:14px" <%= amenities.length > 0 ? 'open' : '' %>>
+          <summary>Filter by Amenities <% if (amenities.length > 0) { %>(<%= amenities.length %> selected)<% } %></summary>
+          <div class="amenity-grid" style="margin-top:10px">
+            <% var allAmenities = ['WiFi','Water','Electricity','Parking','Security','CCTV','Furnished','Kitchen','Balcony']; %>
+            <% for (var ai = 0; ai < allAmenities.length; ai++) { %>
+              <% var am = allAmenities[ai]; %>
+              <label class="amenity-label">
+                <input type="checkbox" name="amenities" value="<%= am %>" <%= amenities.indexOf(am) > -1 ? 'checked' : '' %>>
+                <span><%= am %></span>
+              </label>
+            <% } %>
           </div>
+        </details>
+
+        <!-- Sort + actions row -->
+        <div style="display:flex;gap:8px;align-items:flex-end;margin-top:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <label>Sort By</label>
+            <select name="sort">
+              <option value="newest"     <%= (filters.sort||'newest')==='newest'    ?'selected':'' %>>Newest First</option>
+              <option value="price_asc"  <%= filters.sort==='price_asc'             ?'selected':'' %>>Price: Low → High</option>
+              <option value="price_desc" <%= filters.sort==='price_desc'            ?'selected':'' %>>Price: High → Low</option>
+              <option value="rating_desc"<%= filters.sort==='rating_desc'           ?'selected':'' %>>Rating: High → Low</option>
+            </select>
+          </div>
+          <button type="submit" class="btn">Search</button>
+          <a href="/student/search" class="btn" style="background:#6c757d">Clear</a>
         </div>
       </form>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="font-size:18px;font-weight:600;color:#1a1a2e"><%= houses.length %> Listing(s) Found</h3>
+
+    <!-- Results bar -->
+    <div class="results-bar">
+      <h3 style="font-size:18px;font-weight:600;color:#1a1a2e">
+        <%= totalCount %> Listing(s) Found
+        <% if (totalPages > 1) { %><span style="font-size:13px;font-weight:400;color:#888"> — Page <%= page %> of <%= totalPages %></span><% } %>
+      </h3>
+      <% if (amenities.length > 0 || filters.keyword || filters.location || filters.min_rent || filters.max_rent || filters.bedrooms) { %>
+        <a href="/student/search" style="font-size:13px;color:#c62828;text-decoration:none;font-weight:500">✕ Clear filters</a>
+      <% } %>
     </div>
-    <% if (houses.length === 0) { %>
-      <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
-        <p style="font-size:18px;margin-bottom:8px">No Houses Match Your Search</p>
-        <p>Try Different Filters</p>
-      </div>
-    <% } else { %>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
-        <% for (var i = 0; i < houses.length; i++) { %>
-          <% var house = houses[i]; %>
-          <a href="/student/house/<%= house.id %>" class="house-card">
-            <% if (house.primary_image) { %>
-              <img src="<%= house.primary_image %>" alt="<%= house.title %>">
-            <% } else { %>
-              <div class="img-placeholder">No Photo Yet</div>
-            <% } %>
-            <div class="card-body">
-              <h4><%= house.title %></h4>
-              <p>📍 <%= house.location %></p>
-              <p>🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
-              <div class="rent">KES <%= Number(house.rent).toLocaleString() %>/Mo</div>
-              <% if (house.avg_rating) { %>
-                <span class="rating">★ <%= Number(house.avg_rating).toFixed(1) %> (<%= house.review_count %> Reviews)</span>
+
+    <!-- Skeleton -->
+    <div class="skeleton-placeholder" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+      <% for (var s = 0; s < 6; s++) { %>
+        <div class="skeleton-card">
+          <div class="skeleton-img"></div>
+          <div style="padding:16px">
+            <div class="skeleton skeleton-line medium" style="margin:0 0 8px"></div>
+            <div class="skeleton skeleton-line short" style="margin:0 0 6px"></div>
+            <div class="skeleton skeleton-line short" style="width:40%;margin:0 0 8px"></div>
+            <div class="skeleton skeleton-line" style="width:50%;margin:0"></div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Real content -->
+    <div class="skeleton-content" style="display:none">
+      <% if (houses.length === 0) { %>
+        <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
+          <p style="font-size:48px;margin-bottom:12px">🔍</p>
+          <p style="font-size:18px;font-weight:600;margin-bottom:8px;color:#444">No Houses Match Your Search</p>
+          <p style="margin-bottom:16px">Try adjusting your filters or clearing the search.</p>
+          <a href="/student/search" class="btn">Browse All Listings</a>
+        </div>
+      <% } else { %>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+          <% for (var i = 0; i < houses.length; i++) { %>
+            <% var house = houses[i]; %>
+            <a href="/student/house/<%= house.id %>" class="house-card">
+              <% if (house.primary_image) { %>
+                <img src="<%= house.primary_image %>" alt="<%= house.title %>">
+              <% } else { %>
+                <div class="img-placeholder">No Photo Yet</div>
               <% } %>
-            </div>
-          </a>
+              <div class="card-body">
+                <h4><%= house.title %></h4>
+                <p>📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+                <p>🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+                <div class="rent">KES <%= Number(house.rent).toLocaleString() %>/Mo</div>
+                <% if (house.avg_rating) { %>
+                  <span class="rating">★ <%= Number(house.avg_rating).toFixed(1) %> (<%= house.review_count %> Reviews)</span>
+                <% } %>
+              </div>
+            </a>
+          <% } %>
+        </div>
+
+        <!-- Pagination -->
+        <% if (totalPages > 1) { %>
+          <%
+            var baseUrl = '/student/search?';
+            var qp = [];
+            if (filters.keyword)    qp.push('keyword='    + encodeURIComponent(filters.keyword));
+            if (filters.location)   qp.push('location='   + encodeURIComponent(filters.location));
+            if (filters.min_rent)   qp.push('min_rent='   + filters.min_rent);
+            if (filters.max_rent)   qp.push('max_rent='   + filters.max_rent);
+            if (filters.bedrooms)   qp.push('bedrooms='   + filters.bedrooms);
+            if (filters.sort)       qp.push('sort='       + filters.sort);
+            amenities.forEach(function(a){ qp.push('amenities=' + encodeURIComponent(a)); });
+            var baseUrl = '/student/search?' + qp.join('&') + (qp.length ? '&' : '');
+          %>
+          <div class="pagination">
+            <% if (page > 1) { %>
+              <a href="<%= baseUrl %>page=<%= page-1 %>">‹ Prev</a>
+            <% } %>
+            <% for (var p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) { %>
+              <a href="<%= baseUrl %>page=<%= p %>" class="<%= p===page?'pg-active':'' %>"><%= p %></a>
+            <% } %>
+            <% if (page < totalPages) { %>
+              <a href="<%= baseUrl %>page=<%= page+1 %>">Next ›</a>
+            <% } %>
+          </div>
         <% } %>
-      </div>
-    <% } %>
+      <% } %>
+    </div>
   </div>
 </body>
 </html>

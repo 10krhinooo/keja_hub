@@ -1,142 +1,268 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KejaHub — Student Housing in Kenya</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; color:#1a1a2e; min-height:100vh; }
 
-<title>KejaHub</title>
+    /* ── Navbar ── */
+    .navbar {
+      position:fixed; top:0; left:0; width:100%; z-index:100;
+      display:flex; justify-content:space-between; align-items:center;
+      padding:0 48px; height:64px;
+      background:rgba(21,101,192,0.92); backdrop-filter:blur(10px);
+    }
+    .navbar-logo { font-size:22px; font-weight:800; color:white; text-decoration:none; letter-spacing:-0.5px; }
+    .navbar-logo span { color:#ff6f00; }
+    .navbar-links { display:flex; gap:8px; align-items:center; }
+    .navbar-links a {
+      color:rgba(255,255,255,0.85); text-decoration:none; font-size:14px;
+      font-weight:500; padding:8px 18px; border-radius:8px; transition:all .2s;
+    }
+    .navbar-links a:hover { background:rgba(255,255,255,0.15); color:white; }
+    .navbar-links a.cta {
+      background:#ff6f00; color:white; font-weight:600;
+    }
+    .navbar-links a.cta:hover { background:#e65100; }
 
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family: 'Segoe UI', sans-serif;
-}
+    /* ── Hero ── */
+    .hero {
+      min-height:100vh; position:relative; display:flex; align-items:center;
+      background: linear-gradient(135deg, rgba(13,71,161,0.95) 0%, rgba(21,101,192,0.88) 50%, rgba(0,0,0,0.6) 100%),
+                  url('/images/homepage.jpeg') center/cover no-repeat;
+    }
+    .hero-inner {
+      max-width:1100px; margin:0 auto; padding:120px 48px 80px;
+      display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center;
+    }
+    .hero-text h1 {
+      font-size:52px; font-weight:800; color:white; line-height:1.1;
+      margin-bottom:20px; letter-spacing:-1px;
+    }
+    .hero-text h1 span { color:#ff6f00; }
+    .hero-text p {
+      font-size:17px; color:rgba(255,255,255,0.85); line-height:1.7;
+      margin-bottom:36px; max-width:440px;
+    }
+    .hero-actions { display:flex; gap:14px; flex-wrap:wrap; }
+    .hero-actions a {
+      padding:14px 32px; border-radius:10px; font-size:15px; font-weight:600;
+      text-decoration:none; transition:all .2s;
+    }
+    .hero-actions .btn-primary { background:#ff6f00; color:white; }
+    .hero-actions .btn-primary:hover { background:#e65100; transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,111,0,0.4); }
+    .hero-actions .btn-secondary { background:rgba(255,255,255,0.15); color:white; border:1.5px solid rgba(255,255,255,0.4); backdrop-filter:blur(6px); }
+    .hero-actions .btn-secondary:hover { background:rgba(255,255,255,0.25); transform:translateY(-2px); }
 
-body{
-    min-height:100vh;
-}
+    /* Stats strip */
+    .hero-stats { display:flex; gap:32px; margin-top:48px; flex-wrap:wrap; }
+    .stat-item { text-align:center; }
+    .stat-item .num { font-size:32px; font-weight:800; color:#ff6f00; line-height:1; }
+    .stat-item .lbl { font-size:12px; color:rgba(255,255,255,0.7); margin-top:4px; font-weight:500; text-transform:uppercase; letter-spacing:0.5px; }
 
-.hero{
-    height:100vh;
-    background:
-    linear-gradient(rgba(0,0,0,0.5),
-    rgba(0,0,0,0.5)),
-    url('/images/homepage.jpeg');
-    background-size:cover;
-    background-position:center;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
+    /* Hero card (right side) */
+    .hero-card {
+      background:rgba(255,255,255,0.1); backdrop-filter:blur(16px);
+      border:1px solid rgba(255,255,255,0.2); border-radius:20px; padding:36px;
+    }
+    .hero-card h3 { color:white; font-size:20px; font-weight:700; margin-bottom:20px; }
+    .quick-search { display:flex; flex-direction:column; gap:12px; }
+    .quick-search input, .quick-search select {
+      width:100%; padding:12px 16px; border:1.5px solid rgba(255,255,255,0.25);
+      border-radius:10px; font-size:14px; background:rgba(255,255,255,0.12);
+      color:white; font-family:'Inter',sans-serif; transition:border-color .2s;
+    }
+    .quick-search input::placeholder { color:rgba(255,255,255,0.5); }
+    .quick-search input:focus, .quick-search select:focus { outline:none; border-color:rgba(255,255,255,0.6); }
+    .quick-search select option { color:#1a1a2e; background:white; }
+    .quick-search .search-btn {
+      width:100%; padding:13px; background:#ff6f00; color:white; border:none;
+      border-radius:10px; font-size:15px; font-weight:700; cursor:pointer;
+      font-family:'Inter',sans-serif; transition:all .2s;
+    }
+    .quick-search .search-btn:hover { background:#e65100; }
 
-.content{
-    text-align:center;
-    color:white;
-    max-width:700px;
-    padding:20px;
-}
+    /* ── Features strip ── */
+    .features {
+      background:white; padding:80px 48px;
+    }
+    .features-inner { max-width:1100px; margin:0 auto; }
+    .features h2 { font-size:32px; font-weight:800; color:#1a1a2e; text-align:center; margin-bottom:8px; }
+    .features .subtitle { text-align:center; color:#666; font-size:16px; margin-bottom:48px; }
+    .features-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; }
+    .feature-card {
+      border:1.5px solid #f0f0f0; border-radius:16px; padding:32px 28px;
+      transition:all .2s;
+    }
+    .feature-card:hover { border-color:#1565c0; box-shadow:0 8px 32px rgba(21,101,192,0.1); transform:translateY(-4px); }
+    .feature-icon { font-size:40px; margin-bottom:16px; display:block; }
+    .feature-card h3 { font-size:18px; font-weight:700; color:#1a1a2e; margin-bottom:10px; }
+    .feature-card p { font-size:14px; color:#666; line-height:1.6; }
 
-.content h1{
-    font-size:4rem;
-    margin-bottom:20px;
-}
+    /* ── CTA band ── */
+    .cta-band {
+      background:linear-gradient(135deg,#1565c0,#0d47a1);
+      padding:64px 48px; text-align:center;
+    }
+    .cta-band h2 { font-size:32px; font-weight:800; color:white; margin-bottom:12px; }
+    .cta-band p { font-size:16px; color:rgba(255,255,255,0.8); margin-bottom:32px; }
+    .cta-band a {
+      display:inline-block; padding:15px 40px; background:#ff6f00; color:white;
+      text-decoration:none; border-radius:10px; font-size:16px; font-weight:700;
+      transition:all .2s;
+    }
+    .cta-band a:hover { background:#e65100; transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.2); }
 
-.content p{
-    font-size:1.2rem;
-    margin-bottom:30px;
-    line-height:1.6;
-}
+    /* ── Footer ── */
+    footer { background:#1a1a2e; padding:28px 48px; text-align:center; }
+    footer p { color:rgba(255,255,255,0.45); font-size:13px; }
+    footer span { color:#ff6f00; }
 
-.buttons{
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    flex-wrap:wrap;
-}
-
-.btn{
-    text-decoration:none;
-    padding:15px 35px;
-    border-radius:30px;
-    font-size:18px;
-    font-weight:bold;
-    transition:0.3s;
-}
-
-.login{
-    background:white;
-    color:#2c3e50;
-}
-
-.login:hover{
-    background:#f1f1f1;
-}
-
-.register{
-    background:#27ae60;
-    color:white;
-}
-
-.register:hover{
-    background:#219150;
-}
-
-.navbar{
-    position:absolute;
-    top:0;
-    width:100%;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:20px 50px;
-    color:white;
-}
-
-.logo{
-    font-size:30px;
-    font-weight:bold;
-}
-
-.nav-links a{
-    color:white;
-    text-decoration:none;
-    margin-left:25px;
-    font-size:18px;
-}
-</style>
+    /* Responsive */
+    @media(max-width:900px) {
+      .hero-inner { grid-template-columns:1fr; gap:40px; }
+      .hero-card { display:none; }
+      .hero-text h1 { font-size:38px; }
+      .features-grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:600px) {
+      .navbar { padding:0 20px; }
+      .hero-inner { padding:100px 24px 60px; }
+      .features { padding:60px 24px; }
+      .cta-band { padding:48px 24px; }
+      footer { padding:24px; }
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="hero">
-
-    <div class="navbar">
-        <div class="logo">🏠 KejaHub</div>
-
-        <div class="nav-links">
-            <a href="/login">Login</a>
-            <a href="/register">Register</a>
-        </div>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/home" class="navbar-logo">Keja<span>Hub</span></a>
+    <div class="navbar-links">
+      <a href="/login">Sign In</a>
+      <a href="/register" class="cta">Get Started</a>
     </div>
+  </nav>
 
-    <div class="content">
-        <h1>Find Your Perfect Home</h1>
-
-        <p>
-            Discover affordable houses, apartments, and rental properties
-            across different locations. KejaHub helps you find a place
-            you'll love to call home away from home.
-        </p>
-
-        <div class="buttons">
-            <a href="/login" class="btn login">Login</a>
-            <a href="/register" class="btn register">Get Started</a>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <h1>Student Housing,<br><span>Simplified.</span></h1>
+        <p>Browse verified listings near your campus, connect directly with
+          landlords, and find affordable accommodation — all in one place.</p>
+        <div class="hero-actions">
+          <a href="/register" class="btn-primary">Find a Home</a>
+          <a href="/login" class="btn-secondary">Sign In</a>
         </div>
-    </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="num">10+</div>
+            <div class="lbl">Listings</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">5+</div>
+            <div class="lbl">Landlords</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">3+</div>
+            <div class="lbl">Universities</div>
+          </div>
+          <div class="stat-item">
+            <div class="num">100%</div>
+            <div class="lbl">Free to join</div>
+          </div>
+        </div>
+      </div>
 
-</div>
+      <div class="hero-card">
+        <h3>🔍 Quick Search</h3>
+        <form class="quick-search" action="/login" method="GET">
+          <input type="text" name="keyword" placeholder="Property name or keyword…">
+          <select name="location">
+            <option value="">Any Location</option>
+            <% if (typeof locations !== 'undefined') { %>
+              <% for (var li = 0; li < locations.length; li++) { %>
+                <option value="<%= locations[li] %>"><%= locations[li] %></option>
+              <% } %>
+            <% } %>
+          </select>
+          <select name="bedrooms">
+            <option value="">Any number of bedrooms</option>
+            <option value="1">1 Bedroom / Bedsitter</option>
+            <option value="2">2 Bedrooms</option>
+            <option value="3">3+ Bedrooms</option>
+          </select>
+          <input type="number" name="max_rent" placeholder="Max rent (KES)…" min="0">
+          <button type="submit" class="search-btn">Search Listings →</button>
+        </form>
+        <p style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:14px;text-align:center">Sign in to see full results</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="features-inner">
+      <h2>Everything a Student Needs</h2>
+      <p class="subtitle">From search to move-in, KejaHub has you covered.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🏠</span>
+          <h3>Verified Listings</h3>
+          <p>Every property is reviewed by our team before it goes live.
+            No fake listings, no wasted trips.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📍</span>
+          <h3>Near Your Campus</h3>
+          <p>Filter by location across Nairobi — Ngong Road, Westlands,
+            Kasarani, Rongai and more.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">💬</span>
+          <h3>Direct Booking Requests</h3>
+          <p>Send viewing or booking requests directly to landlords and
+            track their response in real time.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">⭐</span>
+          <h3>Student Reviews</h3>
+          <p>Read honest reviews from fellow students who have lived in
+            the properties you are considering.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">💰</span>
+          <h3>Affordable Prices</h3>
+          <p>Listings range from KES 8,000/month. Use rent range filters
+            to find options that fit your budget.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🔒</span>
+          <h3>Safe & Secure</h3>
+          <p>Report suspicious listings, and our admin team resolves
+            issues within 72 hours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-band">
+    <h2>Ready to Find Your Next Home?</h2>
+    <p>Join students across Nairobi who found their perfect accommodation on KejaHub.</p>
+    <a href="/register">Create a Free Account</a>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2024 <span>KejaHub</span> — Student Housing Platform · Built for Kenyan Students</p>
+  </footer>
 
 </body>
 </html>

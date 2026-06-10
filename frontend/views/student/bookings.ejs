@@ -5,17 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Bookings - KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/dates.js"></script>
 </head>
 <body>
-  <nav>
-    <h1>KejaHub</h1>
-    <div>
-      <a href="/student/dashboard">Home</a>
-      <a href="/student/search">Search</a>
-      <a href="/student/bookings">My Bookings</a>
-      <a href="/logout">Logout</a>
-    </div>
-  </nav>
+  <%- include('../partials/nav-student') %>
   <div style="max-width:900px;margin:32px auto;padding:0 24px">
     <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px">My Booking Requests</h2>
     <% if (bookings.length === 0) { %>
@@ -34,12 +28,17 @@
             <div style="width:140px;height:120px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;flex-shrink:0">No Photo</div>
           <% } %>
           <div style="padding:16px;flex:1">
-            <h3 style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:4px"><%= b.house_title %></h3>
+            <h3 style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:4px">
+              <a href="/student/house/<%= b.house_id %>" style="color:#1a1a2e;text-decoration:none;"><%= b.house_title %></a>
+            </h3>
             <p style="font-size:13px;color:#666;margin-bottom:4px">📍 <%= b.location %></p>
             <p style="font-size:16px;color:#1565c0;font-weight:700;margin-bottom:4px">KES <%= Number(b.rent).toLocaleString() %>/Mo</p>
             <p style="font-size:13px;color:#666;margin-bottom:4px">Type: <%= b.type.charAt(0).toUpperCase() + b.type.slice(1) %></p>
-            <% if (b.visit_date) { %><p style="font-size:13px;color:#666;margin-bottom:4px">Visit Date: <%= b.visit_date %></p><% } %>
+            <% if (b.visit_date) { %><p style="font-size:13px;color:#666;margin-bottom:4px">Visit Date: <span class="date-val"><%= b.visit_date %></span></p><% } %>
             <span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span>
+            <% if (b.status === 'accepted') { %>
+              <p style="font-size:12px;color:#2e7d32;margin-top:6px;font-weight:500">Accepted — <a href="/student/house/<%= b.house_id %>" style="color:#2e7d32">View listing</a> for landlord contact details.</p>
+            <% } %>
           </div>
         </div>
       <% } %>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Bookings - KejaHub Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/dates.js"></script>
+  <style>
+    .table-wrap { overflow-x:auto; }
+    .filter-tab { display:inline-block; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.1); transition:background .15s; margin-right:4px; }
+    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
+    .filter-tab.active { background:white; color:#1a1a2e; }
+    .pagination { display:flex; gap:4px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:rgba(255,255,255,0.92); color:#1a1a2e; transition:background .15s; }
+    .pagination a:hover { background:#e3f2fd; }
+    .pagination a.active { background:#1565c0; color:white; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav-admin') %>
+  <div style="max-width:1100px;margin:32px auto;padding:0 24px">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.3)">All Bookings</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px"><%= totalCount %> booking(s) total</p>
+      </div>
+      <div>
+        <a href="/admin/bookings" class="filter-tab <%= status===''?'active':'' %>">All</a>
+        <a href="/admin/bookings?status=pending"  class="filter-tab <%= status==='pending'?'active':'' %>">Pending</a>
+        <a href="/admin/bookings?status=accepted" class="filter-tab <%= status==='accepted'?'active':'' %>">Accepted</a>
+        <a href="/admin/bookings?status=declined" class="filter-tab <%= status==='declined'?'active':'' %>">Declined</a>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>House</th>
+            <th>Student</th>
+            <th>Landlord</th>
+            <th>Type</th>
+            <th>Visit Date</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Requested</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (bookings.length === 0) { %>
+            <tr><td colspan="8" style="text-align:center;color:#999;padding:32px">No bookings found</td></tr>
+          <% } else { %>
+            <% for (var i = 0; i < bookings.length; i++) { %>
+              <% var b = bookings[i]; %>
+              <tr>
+                <td>
+                  <a href="/admin/house/<%= b.house_id %>" style="color:#1565c0;text-decoration:none;font-weight:500"><%= b.house_title %></a>
+                  <br><span style="color:#999;font-size:11px">📍 <%= b.location %></span>
+                </td>
+                <td><%= b.student_name %><br><span style="color:#999;font-size:11px"><%= b.student_email %></span></td>
+                <td><%= b.landlord_name %></td>
+                <td><%= b.type.charAt(0).toUpperCase() + b.type.slice(1) %></td>
+                <td><span class="date-val"><%= b.visit_date || '-' %></span></td>
+                <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="<%= b.message || '' %>"><%= b.message ? b.message.slice(0,60) + (b.message.length>60?'…':'') : '-' %></td>
+                <td><span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span></td>
+                <td><span class="date-val"><%= b.created_at %></span></td>
+              </tr>
+            <% } %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (totalPages > 1) { %>
+      <div class="pagination">
+        <% if (page > 1) { %>
+          <a href="/admin/bookings?status=<%= status %>&page=<%= page-1 %>">‹ Prev</a>
+        <% } %>
+        <% for (var p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) { %>
+          <a href="/admin/bookings?status=<%= status %>&page=<%= p %>" class="<%= p===page?'active':'' %>"><%= p %></a>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a href="/admin/bookings?status=<%= status %>&page=<%= page+1 %>">Next ›</a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

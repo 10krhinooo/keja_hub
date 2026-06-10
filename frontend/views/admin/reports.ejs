@@ -5,62 +5,98 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reports - KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/dates.js"></script>
+  <style>
+    .table-wrap { overflow-x:auto; }
+    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.12); transition:background .15s; margin-right:4px; }
+    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
+    .filter-tab.active { background:white; color:#1a1a2e; }
+    .reason-toggle { background:none; border:none; color:#1565c0; font-size:12px; cursor:pointer; padding:0 0 0 4px; font-family:inherit; text-decoration:underline; }
+    .reason-toggle:hover { color:#0d47a1; }
+  </style>
 </head>
 <body>
-  <nav class="admin-nav">
-    <h1>KejaHub Admin</h1>
-    <div>
-      <a href="/admin/dashboard">Listings</a>
-      <a href="/admin/users">Users</a>
-      <a href="/admin/reports">Reports</a>
-      <a href="/logout">Logout</a>
-    </div>
-  </nav>
+  <%- include('../partials/nav-admin') %>
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
-    <h2 style="font-size:20px;font-weight:600;color:#1a1a2e;margin-bottom:16px">Reported Listings</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>House</th>
-          <th>Reported By</th>
-          <th>Reason</th>
-          <th>Date</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (reports.length === 0) { %>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.3)">Reported Listings</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px"><%= reports.length %> report(s)</p>
+      </div>
+      <div>
+        <a href="/admin/reports"               class="filter-tab <%= status===''?'active':'' %>">All</a>
+        <a href="/admin/reports?status=open"     class="filter-tab <%= status==='open'?'active':'' %>">Open</a>
+        <a href="/admin/reports?status=resolved" class="filter-tab <%= status==='resolved'?'active':'' %>">Resolved</a>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
           <tr>
-            <td colspan="6" style="text-align:center;color:#999;padding:24px">No Reports Yet</td>
+            <th>House</th>
+            <th>Reported By</th>
+            <th>Reason</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
           </tr>
-        <% } else { %>
-          <% for (var i = 0; i < reports.length; i++) { %>
-            <% var r = reports[i]; %>
+        </thead>
+        <tbody>
+          <% if (reports.length === 0) { %>
             <tr>
-              <td><%= r.house_title %></td>
-              <td><%= r.reported_by_name %></td>
-              <td><%= r.reason %></td>
-              <td><%= r.created_at %></td>
-              <td>
-                <span class="badge badge-<%= r.status %>">
-                  <%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %>
-                </span>
-              </td>
-              <td>
-                <% if (r.status === 'open') { %>
-                  <form method="POST" action="/admin/reports/<%= r.id %>/resolve">
-                    <button class="btn btn-success btn-sm">Resolve</button>
-                  </form>
-                <% } else { %>
-                  <span style="color:#999;font-size:13px">Resolved</span>
-                <% } %>
-              </td>
+              <td colspan="6" style="text-align:center;color:#999;padding:32px">No Reports Found</td>
             </tr>
+          <% } else { %>
+            <% for (var i = 0; i < reports.length; i++) { %>
+              <% var r = reports[i]; %>
+              <tr>
+                <td><a href="/admin/house/<%= r.house_id %>" style="color:#1565c0;text-decoration:none;font-weight:500"><%= r.house_title %></a></td>
+                <td><%= r.reported_by_name %></td>
+                <td class="reason-cell">
+                  <span class="reason-short"><%= r.reason.length > 80 ? r.reason.slice(0, 80) + '…' : r.reason %></span>
+                  <% if (r.reason.length > 80) { %>
+                    <span class="reason-full" style="display:none"><%= r.reason %></span>
+                    <button type="button" class="reason-toggle" onclick="toggleReason(this)">Show more</button>
+                  <% } %>
+                </td>
+                <td><span class="date-val"><%= r.created_at %></span></td>
+                <td>
+                  <span class="badge badge-<%= r.status %>">
+                    <%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %>
+                  </span>
+                </td>
+                <td>
+                  <% if (r.status === 'open') { %>
+                    <form method="POST" action="/admin/reports/<%= r.id %>/resolve">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button class="btn btn-success btn-sm">Resolve</button>
+                    </form>
+                  <% } else { %>
+                    <span style="color:#999;font-size:13px">Resolved</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% } %>
           <% } %>
-        <% } %>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   </div>
+  <% if (query && query.success) { %>
+  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
+  <% } %>
+  <script>
+    function toggleReason(btn) {
+      var cell    = btn.parentElement;
+      var shortEl = cell.querySelector('.reason-short');
+      var fullEl  = cell.querySelector('.reason-full');
+      var expanded = fullEl.style.display !== 'none';
+      shortEl.style.display = expanded ? '' : 'none';
+      fullEl.style.display  = expanded ? 'none' : '';
+      btn.textContent = expanded ? 'Show more' : 'Show less';
+    }
+  </script>
 </body>
 </html>

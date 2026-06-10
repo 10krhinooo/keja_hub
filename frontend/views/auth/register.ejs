@@ -12,6 +12,7 @@
       flex:1;
       background: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
                   url('/images/reg.jpg') center/cover no-repeat;
+      display:flex;
       flex-direction:column;
       justify-content:flex-end;
       padding:48px;
@@ -40,6 +41,9 @@
       font-family:'Inter',sans-serif;
     }
     input:focus, select:focus { outline:none; border-color:#1565c0; }
+    input.field-invalid, select.field-invalid { border-color:#c62828 !important; }
+    input.field-valid,   select.field-valid   { border-color:#2e7d32 !important; }
+    .field-error { display:block; font-size:12px; color:#c62828; margin-top:3px; min-height:16px; }
     .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
     .role-card {
@@ -57,11 +61,26 @@
       cursor:pointer; margin-top:20px; transition:background .2s;
     }
     .btn:hover { background:#0d47a1; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
     .bottom { text-align:center; margin-top:16px; font-size:13px; color:#888; }
     .bottom a { color:#1565c0; text-decoration:none; font-weight:500; }
+    /* Strength meter */
+    .strength-segments { display:flex; gap:4px; margin:6px 0 4px; }
+    .strength-seg { height:4px; flex:1; border-radius:2px; background:#e0e0e0; transition:background .3s; }
+    .strength-label { font-size:11px; color:#888; margin:2px 0; }
+    .strength-checklist { list-style:none; padding:0; margin:6px 0 0; }
+    .strength-checklist li { font-size:12px; color:#aaa; padding:2px 0; }
+    .strength-checklist li::before { content:'✗ '; color:#c62828; }
+    .strength-checklist li.met { color:#2e7d32; }
+    .strength-checklist li.met::before { content:'✓ '; }
+    .pwd-wrap { position:relative; }
+    .pwd-wrap input { padding-right:42px; }
+    .pwd-eye { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#aaa; padding:4px; line-height:0; }
+    .pwd-eye:hover { color:#1565c0; }
     @media(max-width:768px) {
       .left { display:none; }
       .right { width:100%; padding:32px 24px; }
+      .row { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -71,39 +90,55 @@
     <p>Join thousands of students who found affordable housing near their campus through KejaHub.</p>
   </div>
   <div class="right">
-    <div class="logo">Keja<span>Hub</span></div>
+    <a href="/home" style="text-decoration:none"><div class="logo">Keja<span>Hub</span></div></a>
     <h2>Create An Account</h2>
     <p class="subtitle">Fill in your details to get started</p>
     <% if (error) { %>
       <div class="error"><%= error %></div>
     <% } %>
-    <form method="POST" action="/register" autocomplete="off">
+    <form method="POST" action="/register" autocomplete="off" data-validate-form>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="row">
         <div>
           <label>Full Name</label>
-          <input type="text" name="name" placeholder="Your full name" required autocomplete="new-password">
+          <input type="text" name="name" placeholder="Your full name" value="<%= (typeof values !== 'undefined' && values.name) ? values.name : '' %>"
+            data-required="Full name is required"
+            data-min-length="2" data-min-length-msg="Name must be at least 2 characters">
         </div>
         <div>
           <label>Phone Number</label>
-          <input type="tel" name="phone" placeholder="Your phone number" autocomplete="new-password">
+          <input type="tel" name="phone" placeholder="e.g. 0712345678" value="<%= (typeof values !== 'undefined' && values.phone) ? values.phone : '' %>"
+            data-required="Phone number is required"
+            data-pattern="^\d{10}$" data-pattern-msg="Phone must be exactly 10 digits">
         </div>
       </div>
       <label>Email Address</label>
-      <input type="email" name="email" placeholder="Your email address" required autocomplete="new-password">
-      <div class="row">
-        <div>
-          <label>Password</label>
-          <input type="password" name="password" placeholder="Create a password" required autocomplete="new-password">
+      <input type="email" name="email" placeholder="Your email address" value="<%= (typeof values !== 'undefined' && values.email) ? values.email : '' %>"
+        data-required="Email is required"
+        data-email="Please enter a valid email address">
+      <div>
+        <label>Password <span style="color:#888;font-weight:400">(min 8 characters)</span></label>
+        <div class="pwd-wrap">
+          <input type="password" name="password" placeholder="Create a password" autocomplete="new-password"
+            data-required="Password is required"
+            data-min-length="8" data-min-length-msg="Password must be at least 8 characters"
+            data-password-strength>
+          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
-        <div>
-          <label>Confirm Password</label>
-          <input type="password" name="confirm_password" placeholder="Confirm your password" required autocomplete="new-password">
+      </div>
+      <div>
+        <label>Confirm Password</label>
+        <div class="pwd-wrap">
+          <input type="password" name="confirm_password" placeholder="Confirm your password" autocomplete="new-password"
+            data-required="Please confirm your password"
+            data-match="password" data-match-msg="Passwords do not match">
+          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         </div>
       </div>
       <label>I Am A</label>
       <div class="role-grid">
         <label class="role-card" id="card-student">
-          <input type="radio" name="role" value="student" required onclick="selectRole('student')">
+          <input type="radio" name="role" value="student" onclick="selectRole('student')">
           <span class="icon">🎓</span>
           <span class="label">Student</span>
         </label>
@@ -117,12 +152,25 @@
     </form>
     <div class="bottom">Already have an account? <a href="/login">Sign In</a></div>
   </div>
+  <script src="/js/validation.js"></script>
   <script>
+    var EYE = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    var EYE_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    function togglePwd(btn) {
+      var input = btn.previousElementSibling;
+      var hidden = input.type === 'password';
+      input.type = hidden ? 'text' : 'password';
+      btn.innerHTML = hidden ? EYE_OFF : EYE;
+      btn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+    }
     function selectRole(role) {
       document.getElementById('card-student').classList.remove('selected');
       document.getElementById('card-landlord').classList.remove('selected');
       document.getElementById('card-' + role).classList.add('selected');
     }
+    <% if (typeof values !== 'undefined' && values.role) { %>
+      selectRole('<%= values.role %>');
+    <% } %>
   </script>
 </body>
 </html>

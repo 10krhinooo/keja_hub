@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Listing - KejaHub</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/validation.js"></script>
+</head>
+<body>
+  <%- include('../partials/nav-landlord') %>
+  <div style="max-width:700px;margin:32px auto;padding:0 24px">
+    <a href="/landlord/house/<%= house.id %>" style="display:inline-block;margin-bottom:16px;color:#1565c0;text-decoration:none;font-size:14px;font-weight:500">← Back To Listing</a>
+    <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px">Edit Listing</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:24px">Saving changes will reset your listing to <strong>pending review</strong> — it will be hidden from students until the admin approves it again.</p>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <div class="card">
+      <form method="POST" action="/landlord/house/<%= house.id %>/edit" enctype="multipart/form-data" data-validate-form>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Title</label>
+        <input type="text" name="title" value="<%= house.title %>"
+          data-required="Title is required"
+          data-min-length="5" data-min-length-msg="Title must be at least 5 characters">
+        <label>Description</label>
+        <textarea name="description" style="height:100px;resize:vertical"
+          data-required="Description is required"
+          data-min-length="20" data-min-length-msg="Description must be at least 20 characters"><%= house.description || '' %></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Monthly Rent (KES)</label>
+            <input type="number" name="rent" value="<%= house.rent %>" min="1"
+              data-required="Rent is required"
+              data-min-value="1" data-min-value-msg="Rent must be a number greater than 0">
+          </div>
+          <div>
+            <label>Location / Area</label>
+            <select id="loc-select" name="location_select">
+              <option value="">Select a location…</option>
+              <% if (typeof locations !== 'undefined') { %>
+                <% for (var li = 0; li < locations.length; li++) { %>
+                  <option value="<%= locations[li] %>" <%= house.location === locations[li] ? 'selected' : '' %>><%= locations[li] %></option>
+                <% } %>
+              <% } %>
+              <% if (house.location && (typeof locations === 'undefined' || locations.indexOf(house.location) === -1)) { %>
+                <option value="<%= house.location %>" selected><%= house.location %></option>
+              <% } %>
+              <option value="__new__">+ Add new location…</option>
+            </select>
+            <input type="text" id="loc-new" name="location_new"
+              placeholder="Type new neighbourhood (max 60 chars)"
+              maxlength="60" style="display:none;margin-top:8px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Estate / Street</label>
+            <input type="text" name="estate" value="<%= house.estate || '' %>" placeholder="e.g. Malibu Estate">
+          </div>
+          <div>
+            <label>Bedrooms</label>
+            <select name="bedrooms">
+              <option value="1" <%= house.bedrooms==1?'selected':'' %>>1 Bedroom</option>
+              <option value="2" <%= house.bedrooms==2?'selected':'' %>>2 Bedrooms</option>
+              <option value="3" <%= house.bedrooms==3?'selected':'' %>>3 Bedrooms</option>
+              <option value="4" <%= house.bedrooms==4?'selected':'' %>>4+ Bedrooms</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label>Bathrooms</label>
+            <select name="bathrooms">
+              <option value="1" <%= house.bathrooms==1?'selected':'' %>>1 Bathroom</option>
+              <option value="2" <%= house.bathrooms==2?'selected':'' %>>2 Bathrooms</option>
+              <option value="3" <%= house.bathrooms>=3?'selected':'' %>>3+ Bathrooms</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Amenities</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
+          <% var allAmenities = ['WiFi','Water','Electricity','Parking','Security','CCTV','Furnished','Kitchen','Balcony']; %>
+          <% for (var ai = 0; ai < allAmenities.length; ai++) { %>
+            <% var am = allAmenities[ai]; %>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400">
+              <input type="checkbox" name="amenities" value="<%= am %>" style="width:auto" <%= amenities.indexOf(am) > -1 ? 'checked' : '' %>>
+              <%= am %>
+            </label>
+          <% } %>
+        </div>
+
+        <% if (images.length > 0) { %>
+          <label style="margin-top:20px">Current Photos <span style="font-size:12px;color:#888;font-weight:400">(check to remove)</span></label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:8px">
+            <% for (var j = 0; j < images.length; j++) { %>
+              <% var img = images[j]; %>
+              <label style="position:relative;cursor:pointer;display:block;margin:0">
+                <img src="<%= img.image_path %>" alt="Photo" id="img-prev-<%= img.id %>"
+                  style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:2px solid #e0e0e0;transition:border-color .15s,opacity .15s">
+                <input type="checkbox" name="delete_images" value="<%= img.id %>"
+                  style="position:absolute;top:6px;right:6px;width:16px;height:16px;accent-color:#c62828"
+                  onchange="toggleImgDelete(this,'img-prev-<%= img.id %>')">
+                <% if (img.is_primary) { %>
+                  <span style="position:absolute;bottom:6px;left:6px;background:#1565c0;color:white;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600">Primary</span>
+                <% } %>
+              </label>
+            <% } %>
+          </div>
+        <% } %>
+
+        <label style="margin-top:20px">Add New Photos <span style="font-size:12px;color:#888;font-weight:400">(up to 10)</span></label>
+        <input type="file" name="images" id="house-images-input" multiple accept="image/*">
+        <div id="image-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px"></div>
+
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <button type="submit" class="btn" style="flex:1;padding:13px">Save Changes</button>
+          <a href="/landlord/house/<%= house.id %>" class="btn" style="background:#6c757d;padding:13px">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+  <style>
+    #image-preview-grid img { width:100%; height:90px; object-fit:cover; border-radius:8px; border:1.5px solid #e0e0e0; display:block; }
+  </style>
+  <script>
+    (function () {
+      var locSelect = document.getElementById('loc-select');
+      var locNew = document.getElementById('loc-new');
+      locSelect.addEventListener('change', function () {
+        locNew.style.display = locSelect.value === '__new__' ? 'block' : 'none';
+        if (locSelect.value === '__new__') locNew.focus();
+      });
+      document.querySelector('form').addEventListener('submit', function (e) {
+        if (locSelect.value === '__new__' && locNew.value.trim() === '') {
+          e.preventDefault();
+          locNew.style.border = '1.5px solid #c62828';
+          locNew.focus();
+          locNew.placeholder = 'Please enter a location name';
+        }
+        if (locSelect.value === '' && locNew.style.display === 'none') {
+          e.preventDefault();
+          locSelect.style.border = '1.5px solid #c62828';
+          locSelect.focus();
+        }
+      });
+    })();
+
+    function toggleImgDelete(checkbox, imgId) {
+      var img = document.getElementById(imgId);
+      if (checkbox.checked) {
+        img.style.opacity = '0.35';
+        img.style.borderColor = '#c62828';
+      } else {
+        img.style.opacity = '1';
+        img.style.borderColor = '#e0e0e0';
+      }
+    }
+
+    (function () {
+      var input = document.getElementById('house-images-input');
+      var grid  = document.getElementById('image-preview-grid');
+      input.addEventListener('change', function () {
+        grid.innerHTML = '';
+        var files = Array.from(input.files).slice(0, 10);
+        files.forEach(function (file) {
+          if (!file.type.startsWith('image/')) return;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            grid.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

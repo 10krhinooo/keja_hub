@@ -5,33 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Add Listing - KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js"></script>
+  <script src="/js/validation.js"></script>
 </head>
 <body>
-  <nav>
-    <h1>KejaHub</h1>
-    <div>
-      <a href="/landlord/dashboard">Dashboard</a>
-      <a href="/logout">Logout</a>
-    </div>
-  </nav>
+  <%- include('../partials/nav-landlord') %>
   <div style="max-width:700px;margin:32px auto;padding:0 24px">
     <a href="/landlord/dashboard" style="display:inline-block;margin-bottom:16px;color:#1565c0;text-decoration:none;font-size:14px;font-weight:500">← Back To Dashboard</a>
-    <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px">Add A New Listing</h2>
+    <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px">Add A New Listing</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:24px">Your listing will be reviewed by our team before going live — usually within 24 hours.</p>
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
     <div class="card">
-      <form method="POST" action="/landlord/add-house" enctype="multipart/form-data">
+      <form method="POST" action="/landlord/add-house" enctype="multipart/form-data" data-validate-form>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <label>Title</label>
-        <input type="text" name="title" placeholder="e.g. Cozy 1-Bedroom Near Campus" required>
+        <input type="text" name="title" placeholder="e.g. Cozy 1-Bedroom Near Campus"
+          data-required="Title is required"
+          data-min-length="5" data-min-length-msg="Title must be at least 5 characters">
         <label>Description</label>
-        <textarea name="description" placeholder="Describe the house..." style="height:100px;resize:vertical"></textarea>
+        <textarea name="description" placeholder="Describe the house..." style="height:100px;resize:vertical"
+          data-required="Description is required"
+          data-min-length="20" data-min-length-msg="Description must be at least 20 characters"></textarea>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
             <label>Monthly Rent (KES)</label>
-            <input type="number" name="rent" placeholder="e.g. 8000" required>
+            <input type="number" name="rent" placeholder="e.g. 8000" min="1"
+              data-required="Rent is required"
+              data-min-value="1" data-min-value-msg="Rent must be a number greater than 0">
           </div>
           <div>
             <label>Location / Area</label>
-            <input type="text" name="location" placeholder="e.g. Rongai" required>
+            <select id="loc-select" name="location_select">
+              <option value="">Select a location…</option>
+              <% if (typeof locations !== 'undefined') { %>
+                <% for (var li = 0; li < locations.length; li++) { %>
+                  <option value="<%= locations[li] %>"><%= locations[li] %></option>
+                <% } %>
+              <% } %>
+              <option value="__new__">+ Add new location…</option>
+            </select>
+            <input type="text" id="loc-new" name="location_new"
+              placeholder="Type new neighbourhood (max 60 chars)"
+              maxlength="60" style="display:none;margin-top:8px">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -72,10 +87,55 @@
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400"><input type="checkbox" name="amenities" value="Balcony" style="width:auto"> Balcony</label>
         </div>
         <label>House Photos (Up To 10)</label>
-        <input type="file" name="images" multiple accept="image/*">
-        <button type="submit" class="btn" style="margin-top:24px;width:100%;padding:13px">Submit Listing</button>
+        <input type="file" name="images" id="house-images-input" multiple accept="image/*">
+        <div id="image-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px"></div>
+        <button type="submit" class="btn" style="margin-top:24px;width:100%;padding:13px">Submit Listing For Review</button>
       </form>
     </div>
   </div>
+  <style>
+    #image-preview-grid img { width:100%; height:90px; object-fit:cover; border-radius:8px; border:1.5px solid #e0e0e0; display:block; }
+  </style>
+  <script>
+    (function () {
+      var locSelect = document.getElementById('loc-select');
+      var locNew = document.getElementById('loc-new');
+      locSelect.addEventListener('change', function () {
+        locNew.style.display = locSelect.value === '__new__' ? 'block' : 'none';
+        if (locSelect.value === '__new__') locNew.focus();
+      });
+      document.querySelector('form').addEventListener('submit', function (e) {
+        if (locSelect.value === '__new__' && locNew.value.trim() === '') {
+          e.preventDefault();
+          locNew.style.border = '1.5px solid #c62828';
+          locNew.focus();
+          locNew.placeholder = 'Please enter a location name';
+        }
+        if (locSelect.value === '' && locNew.style.display === 'none') {
+          e.preventDefault();
+          locSelect.style.border = '1.5px solid #c62828';
+          locSelect.focus();
+        }
+      });
+    })();
+    (function () {
+      var input = document.getElementById('house-images-input');
+      var grid  = document.getElementById('image-preview-grid');
+      input.addEventListener('change', function () {
+        grid.innerHTML = '';
+        var files = Array.from(input.files).slice(0, 10);
+        files.forEach(function (file) {
+          if (!file.type.startsWith('image/')) return;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            grid.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

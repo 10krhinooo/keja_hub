@@ -1,0 +1,48 @@
+<style>
+  @import url('/css/backgrounds.css');
+  nav { background:#1565c0; padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
+  nav h1 { color:white; font-size:20px; font-weight:700; margin:0; }
+  nav h1 span { color:#ff6f00; }
+  .nav-links { display:flex; align-items:center; gap:4px; }
+  .nav-links a { color:rgba(255,255,255,0.85); text-decoration:none; font-size:14px; font-weight:500; padding:8px 12px; border-radius:6px; transition:background .15s; }
+  .nav-links a:hover { background:rgba(255,255,255,0.15); color:white; }
+  .nav-links a.active { background:rgba(255,255,255,0.25); color:white; }
+  .nav-logout { background:none; border:none; color:rgba(255,255,255,0.85); font-size:14px; font-weight:500; padding:8px 12px; border-radius:6px; cursor:pointer; font-family:inherit; transition:background .15s; }
+  .nav-logout:hover { background:rgba(255,255,255,0.15); color:white; }
+  .nav-hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; background:none; border:none; padding:8px; }
+  .nav-hamburger span { display:block; width:22px; height:2px; background:white; border-radius:2px; transition:all .2s; }
+  #nav-toggle { display:none; }
+  @media (max-width: 640px) {
+    nav { position:relative; flex-wrap:wrap; height:auto; padding:12px 16px; }
+    .nav-hamburger { display:flex; }
+    .nav-links { display:none; flex-direction:column; width:100%; padding:8px 0 4px; gap:2px; }
+    #nav-toggle:checked ~ .nav-links { display:flex; }
+    #nav-toggle:checked ~ .nav-hamburger span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+    #nav-toggle:checked ~ .nav-hamburger span:nth-child(2) { opacity:0; }
+    #nav-toggle:checked ~ .nav-hamburger span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+    .nav-links a, .nav-logout { width:100%; text-align:left; }
+  }
+</style>
+<nav>
+  <h1><a href="/home" style="color:inherit;text-decoration:none">Keja<span>Hub</span></a></h1>
+  <input type="checkbox" id="nav-toggle">
+  <label class="nav-hamburger" for="nav-toggle">
+    <span></span><span></span><span></span>
+  </label>
+  <div class="nav-links">
+    <a href="/student/dashboard">Home</a>
+    <a href="/student/search">Search</a>
+    <a href="/student/bookings">My Bookings</a>
+    <a href="/student/profile">My Profile</a>
+    <form method="POST" action="/logout" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="nav-logout">Logout</button>
+    </form>
+  </div>
+</nav>
+<script>(function(){document.querySelectorAll('.nav-links a').forEach(function(a){var h=a.getAttribute('href');if(location.pathname===h||location.pathname.startsWith(h+'/')){a.classList.add('active');}});})();</script>
+<div class="bg-animated" aria-hidden="true">
+  <div class="bg-blob bg-blob-1"></div>
+  <div class="bg-blob bg-blob-2"></div>
+  <div class="bg-blob bg-blob-3"></div>
+</div>
