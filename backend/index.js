@@ -4,7 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const { initDB } = require('./database');
 const noCache = require('./middleware/noCache');
-const csrfProtection = require('./middleware/csrf');
+const { csrfProtection } = require('./middleware/csrf');
 
 const app = express();
 const PORT = process.env.PORT || 3000;

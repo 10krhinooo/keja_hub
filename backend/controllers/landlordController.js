@@ -1,4 +1,6 @@
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { getDB, saveDB, rowsToObjects, getDistinctLocations } = require('../database');
 
 const dashboard = (req, res) => {
@@ -234,6 +236,13 @@ const editHouse = (req, res) => {
     if (delete_images) {
       const toDelete = Array.isArray(delete_images) ? delete_images : [delete_images];
       toDelete.forEach(imgId => {
+        const pathStmt = db.prepare(`SELECT image_path FROM house_images WHERE id = ? AND house_id = ?`);
+        pathStmt.bind([parseInt(imgId, 10), houseId]);
+        if (pathStmt.step()) {
+          const imgPath = pathStmt.getAsObject().image_path;
+          try { fs.unlinkSync(path.join(__dirname, '../../', imgPath)); } catch (_) {}
+        }
+        pathStmt.free();
         db.run(`DELETE FROM house_images WHERE id = ? AND house_id = ?`, [parseInt(imgId, 10), houseId]);
       });
     }
@@ -273,12 +282,23 @@ const deleteHouse = (req, res) => {
     ownerStmt.free();
     if (!owned) return res.redirect('/landlord/dashboard');
 
+    const imgPathStmt = db.prepare(`SELECT image_path FROM house_images WHERE house_id = ?`);
+    imgPathStmt.bind([houseId]);
+    const imgPaths = [];
+    while (imgPathStmt.step()) imgPaths.push(imgPathStmt.getAsObject().image_path);
+    imgPathStmt.free();
+
     db.run(`DELETE FROM bookings     WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM reviews      WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM amenities    WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM houses       WHERE id = ?`,       [houseId]);
     saveDB();
+
+    imgPaths.forEach(p => {
+      try { fs.unlinkSync(path.join(__dirname, '../../', p)); } catch (_) {}
+    });
+
     res.redirect('/landlord/dashboard');
   } catch (err) {
     console.error('Delete house error:', err);
