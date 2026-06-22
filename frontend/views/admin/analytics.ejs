@@ -62,12 +62,12 @@
               <text x="52" y="<%= gy+4 %>" text-anchor="end" font-size="9" fill="#999" font-family="Inter,sans-serif"><%= Math.round(gi/4*lpmMax) %></text>
             <% } %>
             <!-- Line -->
-            <polyline points="<%= polyPts %>" fill="none" stroke="#1565c0" stroke-width="2.5" stroke-linejoin="round"/>
+            <polyline points="<%= polyPts %>" fill="none" stroke="#52B788" stroke-width="2.5" stroke-linejoin="round"/>
             <!-- Points and labels -->
             <% for (var pi = 0; pi < pts.length; pi++) { %>
               <% var pt = pts[pi]; %>
-              <circle cx="<%= pt.x %>" cy="<%= pt.y %>" r="4" fill="#1565c0" stroke="white" stroke-width="1.5"/>
-              <text x="<%= pt.x %>" y="<%= pt.y - 8 %>" text-anchor="middle" font-size="10" fill="#1565c0" font-weight="600" font-family="Inter,sans-serif"><%= pt.count %></text>
+              <circle cx="<%= pt.x %>" cy="<%= pt.y %>" r="4" fill="#52B788" stroke="white" stroke-width="1.5"/>
+              <text x="<%= pt.x %>" y="<%= pt.y - 8 %>" text-anchor="middle" font-size="10" fill="#2D6A4F" font-weight="600" font-family="Inter,sans-serif"><%= pt.count %></text>
               <text x="<%= pt.x %>" y="150" text-anchor="middle" font-size="9" fill="#888" font-family="Inter,sans-serif"><%= pt.month %></text>
             <% } %>
           </svg>
@@ -124,7 +124,7 @@
             <% for (var tli = 0; tli < topLocations.length; tli++) { %>
               <% var tl = topLocations[tli]; var tlw = Math.round((tl.count/tlMax)*230); %>
               <text x="108" y="<%= 20 + tli*30 %>" text-anchor="end" font-size="11" fill="#555" font-family="Inter,sans-serif"><%= tl.location %></text>
-              <rect x="112" y="<%= 8 + tli*30 %>" width="<%= tlw %>" height="16" rx="3" fill="#1565c0"/>
+              <rect x="112" y="<%= 8 + tli*30 %>" width="<%= tlw %>" height="16" rx="3" fill="#1B4332"/>
               <text x="<%= 116 + tlw %>" y="<%= 20 + tli*30 %>" font-size="10" fill="#333" font-family="Inter,sans-serif"><%= tl.count %></text>
             <% } %>
           </svg>

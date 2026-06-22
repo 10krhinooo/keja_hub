@@ -3,27 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Overview - KejaHub</title>
+  <title>Admin Overview — KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/toast.js"></script>
   <script src="/js/skeleton.js"></script>
   <script src="/js/dates.js"></script>
   <style>
-    .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+    .charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
     @media (max-width:700px) { .charts-row { grid-template-columns:1fr; } }
-    .chart-card { background:rgba(255,255,255,0.92); border-radius:16px; padding:20px 24px; box-shadow:0 4px 24px rgba(0,0,0,0.1); backdrop-filter:blur(12px); }
-    .chart-card h3 { font-size:14px; font-weight:600; color:#444; margin-bottom:14px; text-transform:uppercase; letter-spacing:0.5px; }
-    .activity-feed { background:rgba(255,255,255,0.92); border-radius:16px; padding:20px 24px; box-shadow:0 4px 24px rgba(0,0,0,0.1); backdrop-filter:blur(12px); margin-bottom:24px; }
-    .activity-feed h3 { font-size:16px; font-weight:700; color:#1a1a2e; margin-bottom:16px; }
-    .activity-item { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+
+    .chart-card {
+      background:white; border-radius:12px; padding:20px 24px;
+      box-shadow:0 2px 12px rgba(27,67,50,0.08);
+      border:1px solid #D4E6DB;
+    }
+    .chart-card h3 {
+      font-size:11px; font-weight:600; color:#7A9088;
+      margin-bottom:14px; text-transform:uppercase; letter-spacing:0.6px;
+    }
+
+    .activity-feed {
+      background:white; border-radius:12px; padding:20px 24px;
+      box-shadow:0 2px 12px rgba(27,67,50,0.08);
+      border:1px solid #D4E6DB; margin-bottom:24px;
+    }
+    .activity-feed h3 {
+      font-family:'DM Serif Display',Georgia,serif;
+      font-size:18px; font-weight:400; color:#1A1A1A; margin-bottom:16px;
+    }
+
+    .activity-item { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #D4E6DB; }
     .activity-item:last-child { border-bottom:none; }
     .activity-icon { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
-    .activity-icon.booking { background:#e3f2fd; }
-    .activity-icon.report  { background:#fdecea; }
+    .activity-icon.booking { background:#E8F5E9; }
+    .activity-icon.report  { background:#FDECEA; }
     .activity-text { flex:1; }
-    .activity-text .actor { font-weight:600; font-size:13px; color:#1a1a2e; }
-    .activity-text .detail { font-size:12px; color:#888; margin-top:2px; }
-    .activity-time { font-size:11px; color:#bbb; white-space:nowrap; }
+    .activity-text .actor { font-weight:600; font-size:13px; color:#1A1A1A; }
+    .activity-text .detail { font-size:12px; color:#7A9088; margin-top:2px; }
+    .activity-time { font-size:11px; color:#B0C4BB; white-space:nowrap; }
+
     .table-wrap { overflow-x:auto; }
     .skeleton-placeholder .stats-grid-6 { display:grid; grid-template-columns:repeat(6,1fr); gap:16px; margin-bottom:32px; }
     @media (max-width:900px) { .skeleton-placeholder .stats-grid-6 { grid-template-columns:repeat(3,1fr); } }
@@ -55,7 +73,7 @@
           <p>Total Students</p>
         </div>
         <div class="stat-card">
-          <h3 style="color:#2e7d32"><%= stats.landlords %></h3>
+          <h3 style="color:#2E7D32"><%= stats.landlords %></h3>
           <p>Total Landlords</p>
         </div>
         <div class="stat-card">
@@ -63,7 +81,7 @@
           <p>Total Listings</p>
         </div>
         <a href="/admin/listings?filter=pending" class="stat-card" style="text-decoration:none;color:inherit">
-          <h3 style="color:<%= stats.pending > 0 ? '#f57f17' : '#1565c0' %>"><%= stats.pending %></h3>
+          <h3 style="color:<%= stats.pending > 0 ? '#E65100' : '#1B4332' %>"><%= stats.pending %></h3>
           <p>Pending Approval ↗</p>
         </a>
         <a href="/admin/bookings" class="stat-card" style="text-decoration:none;color:inherit">
@@ -71,7 +89,7 @@
           <p>Active Bookings ↗</p>
         </a>
         <a href="/admin/reports" class="stat-card" style="text-decoration:none;color:inherit">
-          <h3 style="color:<%= stats.openReports > 0 ? '#c62828' : '#1565c0' %>"><%= stats.openReports %></h3>
+          <h3 style="color:<%= stats.openReports > 0 ? '#C62828' : '#1B4332' %>"><%= stats.openReports %></h3>
           <p>Open Reports ↗</p>
         </a>
       </div>
@@ -84,18 +102,18 @@
           <%
             var lMax = Math.max(listingsByStatus.approved, listingsByStatus.pending, listingsByStatus.rejected, 1);
             var lBars = [
-              ['Approved', listingsByStatus.approved, '#2e7d32'],
-              ['Pending',  listingsByStatus.pending,  '#f57f17'],
-              ['Rejected', listingsByStatus.rejected, '#c62828']
+              ['Approved', listingsByStatus.approved, '#2E7D32'],
+              ['Pending',  listingsByStatus.pending,  '#E65100'],
+              ['Rejected', listingsByStatus.rejected, '#C62828']
             ];
           %>
           <svg role="img" aria-label="Listings by status bar chart"
                viewBox="0 0 320 100" style="width:100%;height:auto">
             <% for (var bi = 0; bi < lBars.length; bi++) { %>
               <% var lb = lBars[bi]; var lw = Math.round((lb[1]/lMax)*210); %>
-              <text x="78" y="<%= 22 + bi*30 %>" text-anchor="end" font-size="11" fill="#555" font-family="Inter,sans-serif"><%= lb[0] %></text>
+              <text x="78" y="<%= 22 + bi*30 %>" text-anchor="end" font-size="11" fill="#7A9088" font-family="Inter,sans-serif"><%= lb[0] %></text>
               <rect x="82" y="<%= 9 + bi*30 %>" width="<%= lw %>" height="16" rx="3" fill="<%= lb[2] %>"/>
-              <text x="<%= 86 + lw %>" y="<%= 22 + bi*30 %>" font-size="10" fill="#333" font-family="Inter,sans-serif"><%= lb[1] %></text>
+              <text x="<%= 86 + lw %>" y="<%= 22 + bi*30 %>" font-size="10" fill="#3D4F47" font-family="Inter,sans-serif"><%= lb[1] %></text>
             <% } %>
           </svg>
         </div>
@@ -106,18 +124,18 @@
           <%
             var bkMax = Math.max(bookingsByStatus.pending, bookingsByStatus.accepted, bookingsByStatus.declined, 1);
             var bkBars = [
-              ['Pending',  bookingsByStatus.pending,  '#f57f17'],
-              ['Accepted', bookingsByStatus.accepted, '#2e7d32'],
-              ['Declined', bookingsByStatus.declined, '#c62828']
+              ['Pending',  bookingsByStatus.pending,  '#E65100'],
+              ['Accepted', bookingsByStatus.accepted, '#2E7D32'],
+              ['Declined', bookingsByStatus.declined, '#C62828']
             ];
           %>
           <svg role="img" aria-label="Bookings by status bar chart"
                viewBox="0 0 320 100" style="width:100%;height:auto">
             <% for (var bki = 0; bki < bkBars.length; bki++) { %>
               <% var bkb = bkBars[bki]; var bkw = Math.round((bkb[1]/bkMax)*210); %>
-              <text x="78" y="<%= 22 + bki*30 %>" text-anchor="end" font-size="11" fill="#555" font-family="Inter,sans-serif"><%= bkb[0] %></text>
+              <text x="78" y="<%= 22 + bki*30 %>" text-anchor="end" font-size="11" fill="#7A9088" font-family="Inter,sans-serif"><%= bkb[0] %></text>
               <rect x="82" y="<%= 9 + bki*30 %>" width="<%= bkw %>" height="16" rx="3" fill="<%= bkb[2] %>"/>
-              <text x="<%= 86 + bkw %>" y="<%= 22 + bki*30 %>" font-size="10" fill="#333" font-family="Inter,sans-serif"><%= bkb[1] %></text>
+              <text x="<%= 86 + bkw %>" y="<%= 22 + bki*30 %>" font-size="10" fill="#3D4F47" font-family="Inter,sans-serif"><%= bkb[1] %></text>
             <% } %>
           </svg>
         </div>
@@ -132,14 +150,14 @@
           </thead>
           <tbody>
             <% if (topHouses.length === 0) { %>
-              <tr><td colspan="5" style="text-align:center;color:#999;padding:24px">No reviewed listings yet</td></tr>
+              <tr><td colspan="5" style="text-align:center;color:#7A9088;padding:24px">No reviewed listings yet</td></tr>
             <% } else { %>
               <% for (var m = 0; m < topHouses.length; m++) { %>
                 <% var th = topHouses[m]; %>
                 <tr>
-                  <td><a href="/admin/house/<%= th.id %>" style="color:#1565c0;text-decoration:none;font-weight:500"><%= th.title %></a></td>
+                  <td><a href="/admin/house/<%= th.id %>" style="color:#1B4332;text-decoration:none;font-weight:500"><%= th.title %></a></td>
                   <td><%= th.location %></td>
-                  <td style="color:#f57f17;font-weight:600">★ <%= th.avg_rating %></td>
+                  <td style="color:#E65100;font-weight:600">★ <%= th.avg_rating %></td>
                   <td><%= th.review_count %></td>
                   <td><%= th.landlord_name %></td>
                 </tr>
@@ -153,7 +171,7 @@
       <div class="activity-feed">
         <h3>Recent Activity</h3>
         <% if (activityFeed.length === 0) { %>
-          <p style="color:#999;font-size:13px">No activity recorded yet.</p>
+          <p style="color:#7A9088;font-size:13px">No activity recorded yet.</p>
         <% } else { %>
           <% for (var ai = 0; ai < activityFeed.length; ai++) { %>
             <% var ev = activityFeed[ai]; %>

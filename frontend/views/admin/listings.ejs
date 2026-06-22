@@ -13,13 +13,13 @@
     .table-wrap { overflow-x:auto; }
     .truncate { max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .filter-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.12); transition:background .15s; }
-    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
-    .filter-tab.active { background:white; color:#1a1a2e; }
+    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:#2D6A4F; background:white; border:1.5px solid #D4E6DB; transition:all .15s; }
+    .filter-tab:hover { background:#EEF5F0; border-color:#52B788; }
+    .filter-tab.active { background:#1B4332; color:white; border-color:#1B4332; }
     .pagination { display:flex; gap:4px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
-    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:rgba(255,255,255,0.92); color:#1a1a2e; }
-    .pagination a:hover { background:#e3f2fd; }
-    .pagination a.pg-active { background:#1565c0; color:white; }
+    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:white; color:#3D4F47; border:1px solid #D4E6DB; transition:all .15s; }
+    .pagination a:hover { background:#EEF5F0; border-color:#52B788; }
+    .pagination a.pg-active { background:#1B4332; color:white; border-color:#1B4332; }
   </style>
 </head>
 <body>
@@ -71,7 +71,7 @@
             <% for (var i = 0; i < listings.length; i++) { %>
               <% var h = listings[i]; %>
               <tr>
-                <td><a href="/admin/house/<%= h.id %>" style="color:#1565c0;text-decoration:none;font-weight:500" class="truncate" style="display:block"><%= h.title %></a></td>
+                <td><a href="/admin/house/<%= h.id %>" style="color:#1B4332;text-decoration:none;font-weight:500" class="truncate" style="display:block"><%= h.title %></a></td>
                 <td><%= h.landlord_name %><br><span style="color:#999;font-size:11px"><%= h.landlord_email %></span></td>
                 <td><%= h.location %></td>
                 <td>KES <%= Number(h.rent).toLocaleString() %></td>

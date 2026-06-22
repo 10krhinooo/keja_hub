@@ -14,8 +14,9 @@
     <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:24px">My Booking Requests</h2>
     <% if (bookings.length === 0) { %>
       <div style="background:white;padding:48px;border-radius:16px;text-align:center;color:#999">
-        <p style="font-size:18px;margin-bottom:8px">No Requests Yet</p>
-        <p>Search For Houses And Send A Viewing Or Booking Request.</p>
+        <p style="font-size:40px;margin-bottom:12px">📋</p>
+        <p style="font-size:18px;font-weight:600;margin-bottom:8px;color:#3D4F47">No requests yet</p>
+        <p>Search for houses and send a viewing or booking request.</p>
         <a href="/student/search" class="btn" style="margin-top:16px;display:inline-block">Search Houses</a>
       </div>
     <% } else { %>
@@ -32,7 +33,7 @@
               <a href="/student/house/<%= b.house_id %>" style="color:#1a1a2e;text-decoration:none;"><%= b.house_title %></a>
             </h3>
             <p style="font-size:13px;color:#666;margin-bottom:4px">📍 <%= b.location %></p>
-            <p style="font-size:16px;color:#1565c0;font-weight:700;margin-bottom:4px">KES <%= Number(b.rent).toLocaleString() %>/Mo</p>
+            <p style="font-size:16px;color:#1B4332;font-weight:700;margin-bottom:4px">KES <%= Number(b.rent).toLocaleString() %>/Mo</p>
             <p style="font-size:13px;color:#666;margin-bottom:4px">Type: <%= b.type.charAt(0).toUpperCase() + b.type.slice(1) %></p>
             <% if (b.visit_date) { %><p style="font-size:13px;color:#666;margin-bottom:4px">Visit Date: <span class="date-val"><%= b.visit_date %></span></p><% } %>
             <span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span>

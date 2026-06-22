@@ -3,139 +3,212 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register - KejaHub</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Register — KejaHub</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
-    body { min-height:100vh; display:flex; }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    :root {
+      --forest:  #1B4332;
+      --moss:    #2D6A4F;
+      --leaf:    #52B788;
+      --earth:   #C97D3A;
+      --ink:     #1A1A1A;
+      --slate:   #3D4F47;
+      --quiet:   #7A9088;
+      --border:  #D4E6DB;
+      --danger:  #C62828;
+      --success: #2E7D32;
+      --cream:   #FFFDF5;
+    }
+
+    body { min-height: 100vh; display: flex; }
+
     .left {
-      flex:1;
-      background: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
-                  url('/images/reg.jpg') center/cover no-repeat;
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-end;
-      padding:48px;
-      color:white;
+      flex: 1;
+      background:
+        linear-gradient(160deg, rgba(27,67,50,0.88) 0%, rgba(27,67,50,0.65) 55%, rgba(0,0,0,0.28) 100%),
+        url('/images/reg.jpg') center/cover no-repeat;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 52px; color: white;
     }
-    .left h1 { font-size:36px; font-weight:700; margin-bottom:12px; line-height:1.2; }
-    .left p { font-size:15px; opacity:0.85; line-height:1.6; max-width:380px; }
+    .left-eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 1.8px;
+      text-transform: uppercase; color: rgba(82,183,136,0.9); margin-bottom: 14px;
+    }
+    .left h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 38px; font-weight: 400; line-height: 1.18; margin-bottom: 14px;
+    }
+    .left p { font-size: 15px; opacity: 0.72; line-height: 1.66; max-width: 380px; }
+
     .right {
-      width:520px;
-      background:white;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      padding:48px;
-      overflow-y:auto;
+      width: 520px;
+      background: var(--cream);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 48px; overflow-y: auto;
     }
-    .logo { font-size:22px; font-weight:700; color:#1565c0; margin-bottom:24px; }
-    .logo span { color:#ff6f00; }
-    h2 { font-size:26px; font-weight:700; color:#1a1a2e; margin-bottom:6px; }
-    .subtitle { font-size:14px; color:#888; margin-bottom:20px; }
-    .error { background:#fdecea; color:#c62828; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; }
-    label { display:block; font-size:13px; font-weight:500; color:#444; margin-bottom:5px; margin-top:14px; }
+
+    .logo {
+      font-size: 20px; font-weight: 700; color: var(--forest);
+      text-decoration: none; display: block; margin-bottom: 24px;
+    }
+    .logo span { color: var(--earth); }
+
+    h2 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 28px; font-weight: 400; color: var(--ink); margin-bottom: 6px;
+    }
+    .subtitle { font-size: 14px; color: var(--quiet); margin-bottom: 20px; }
+
+    .error {
+      background: #FDECEA; color: var(--danger);
+      padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
+      border-left: 3px solid var(--danger);
+    }
+
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--slate); margin-bottom: 5px; margin-top: 14px; }
+
     input, select {
-      width:100%; padding:12px 14px; border:1.5px solid #e0e0e0;
-      border-radius:8px; font-size:14px; transition:border-color .2s;
-      font-family:'Inter',sans-serif;
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      color: var(--ink); background: white;
+      transition: border-color .2s, box-shadow .2s;
     }
-    input:focus, select:focus { outline:none; border-color:#1565c0; }
-    input.field-invalid, select.field-invalid { border-color:#c62828 !important; }
-    input.field-valid,   select.field-valid   { border-color:#2e7d32 !important; }
-    .field-error { display:block; font-size:12px; color:#c62828; margin-top:3px; min-height:16px; }
-    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+    input:focus, select:focus { outline: none; border-color: var(--leaf); box-shadow: 0 0 0 3px rgba(82,183,136,0.14); }
+    input.field-invalid, select.field-invalid { border-color: var(--danger) !important; }
+    input.field-valid,   select.field-valid   { border-color: var(--success) !important; }
+    .field-error { display: block; font-size: 12px; color: var(--danger); margin-top: 3px; min-height: 16px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Role selection */
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
     .role-card {
-      border:2px solid #e0e0e0; border-radius:10px; padding:14px;
-      text-align:center; cursor:pointer; transition:all .2s;
+      border: 2px solid var(--border); border-radius: 10px; padding: 14px;
+      text-align: center; cursor: pointer; transition: all .2s; background: white;
     }
-    .role-card:hover { border-color:#1565c0; background:#f0f7ff; }
-    .role-card input { display:none; }
-    .role-card .icon { font-size:26px; display:block; margin-bottom:6px; }
-    .role-card .label { font-size:13px; font-weight:600; color:#333; }
-    .role-card.selected { border-color:#1565c0; background:#e3f2fd; }
+    .role-card:hover { border-color: var(--leaf); background: #F0FBF5; }
+    .role-card input { display: none; }
+    .role-card .icon { font-size: 26px; display: block; margin-bottom: 6px; }
+    .role-card .label { font-size: 13px; font-weight: 600; color: var(--slate); }
+    .role-card.selected { border-color: var(--forest); background: #E8F5EE; }
+    .role-card.selected .label { color: var(--forest); }
+
     .btn {
-      width:100%; padding:13px; background:#1565c0; color:white;
-      border:none; border-radius:8px; font-size:15px; font-weight:600;
-      cursor:pointer; margin-top:20px; transition:background .2s;
+      width: 100%; padding: 13px;
+      background: var(--forest); color: white;
+      border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-top: 20px;
+      font-family: 'Inter', sans-serif; transition: background .2s;
     }
-    .btn:hover { background:#0d47a1; }
-    .btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .bottom { text-align:center; margin-top:16px; font-size:13px; color:#888; }
-    .bottom a { color:#1565c0; text-decoration:none; font-weight:500; }
+    .btn:hover { background: var(--moss); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .bottom { text-align: center; margin-top: 16px; font-size: 13px; color: var(--quiet); }
+    .bottom a { color: var(--forest); text-decoration: none; font-weight: 500; }
+    .bottom a:hover { text-decoration: underline; }
+
     /* Strength meter */
-    .strength-segments { display:flex; gap:4px; margin:6px 0 4px; }
-    .strength-seg { height:4px; flex:1; border-radius:2px; background:#e0e0e0; transition:background .3s; }
-    .strength-label { font-size:11px; color:#888; margin:2px 0; }
-    .strength-checklist { list-style:none; padding:0; margin:6px 0 0; }
-    .strength-checklist li { font-size:12px; color:#aaa; padding:2px 0; }
-    .strength-checklist li::before { content:'✗ '; color:#c62828; }
-    .strength-checklist li.met { color:#2e7d32; }
-    .strength-checklist li.met::before { content:'✓ '; }
-    .pwd-wrap { position:relative; }
-    .pwd-wrap input { padding-right:42px; }
-    .pwd-eye { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#aaa; padding:4px; line-height:0; }
-    .pwd-eye:hover { color:#1565c0; }
-    @media(max-width:768px) {
-      .left { display:none; }
-      .right { width:100%; padding:32px 24px; }
-      .row { grid-template-columns:1fr; }
+    .strength-segments { display: flex; gap: 4px; margin: 6px 0 4px; }
+    .strength-seg { height: 4px; flex: 1; border-radius: 2px; background: var(--border); transition: background .3s; }
+    .strength-label { font-size: 11px; color: var(--quiet); margin: 2px 0; }
+    .strength-checklist { list-style: none; padding: 0; margin: 6px 0 0; }
+    .strength-checklist li { font-size: 12px; color: #aaa; padding: 2px 0; }
+    .strength-checklist li::before { content: '✗ '; color: var(--danger); }
+    .strength-checklist li.met { color: var(--success); }
+    .strength-checklist li.met::before { content: '✓ '; }
+
+    .pwd-wrap { position: relative; }
+    .pwd-wrap input { padding-right: 42px; }
+    .pwd-eye {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--quiet); padding: 4px; line-height: 0;
+    }
+    .pwd-eye:hover { color: var(--forest); }
+
+    @media (max-width: 768px) {
+      .left { display: none; }
+      .right { width: 100%; padding: 32px 24px; }
+      .row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="left">
-    <h1>Your Next Home Is Here</h1>
-    <p>Join thousands of students who found affordable housing near their campus through KejaHub.</p>
+    <p class="left-eyebrow">KejaHub · Kenya</p>
+    <h1>Your next home is here</h1>
+    <p>Join students who found affordable housing near their campus through KejaHub.</p>
   </div>
+
   <div class="right">
-    <a href="/home" style="text-decoration:none"><div class="logo">Keja<span>Hub</span></div></a>
-    <h2>Create An Account</h2>
+    <a href="/home" class="logo">Keja<span>Hub</span></a>
+    <h2>Create an account</h2>
     <p class="subtitle">Fill in your details to get started</p>
+
     <% if (error) { %>
       <div class="error"><%= error %></div>
     <% } %>
+
     <form method="POST" action="/register" autocomplete="off" data-validate-form>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
       <div class="row">
         <div>
-          <label>Full Name</label>
-          <input type="text" name="name" placeholder="Your full name" value="<%= (typeof values !== 'undefined' && values.name) ? values.name : '' %>"
+          <label>Full name</label>
+          <input type="text" name="name" placeholder="Your full name"
+            value="<%= (typeof values !== 'undefined' && values.name) ? values.name : '' %>"
             data-required="Full name is required"
             data-min-length="2" data-min-length-msg="Name must be at least 2 characters">
+          <span class="field-error"></span>
         </div>
         <div>
-          <label>Phone Number</label>
-          <input type="tel" name="phone" placeholder="e.g. 0712345678" value="<%= (typeof values !== 'undefined' && values.phone) ? values.phone : '' %>"
+          <label>Phone number</label>
+          <input type="tel" name="phone" placeholder="e.g. 0712345678"
+            value="<%= (typeof values !== 'undefined' && values.phone) ? values.phone : '' %>"
             data-required="Phone number is required"
             data-pattern="^\d{10}$" data-pattern-msg="Phone must be exactly 10 digits">
+          <span class="field-error"></span>
         </div>
       </div>
-      <label>Email Address</label>
-      <input type="email" name="email" placeholder="Your email address" value="<%= (typeof values !== 'undefined' && values.email) ? values.email : '' %>"
+
+      <label>Email address</label>
+      <input type="email" name="email" placeholder="you@example.com"
+        value="<%= (typeof values !== 'undefined' && values.email) ? values.email : '' %>"
         data-required="Email is required"
         data-email="Please enter a valid email address">
+      <span class="field-error"></span>
+
       <div>
-        <label>Password <span style="color:#888;font-weight:400">(min 8 characters)</span></label>
+        <label>Password <span style="color:var(--quiet);font-weight:400">(min 8 characters)</span></label>
         <div class="pwd-wrap">
           <input type="password" name="password" placeholder="Create a password" autocomplete="new-password"
             data-required="Password is required"
             data-min-length="8" data-min-length-msg="Password must be at least 8 characters"
             data-password-strength>
-          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </div>
+        <span class="field-error"></span>
       </div>
+
       <div>
-        <label>Confirm Password</label>
+        <label>Confirm password</label>
         <div class="pwd-wrap">
           <input type="password" name="confirm_password" placeholder="Confirm your password" autocomplete="new-password"
             data-required="Please confirm your password"
             data-match="password" data-match-msg="Passwords do not match">
-          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          <button type="button" class="pwd-eye" onclick="togglePwd(this)" aria-label="Show password">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </div>
+        <span class="field-error"></span>
       </div>
-      <label>I Am A</label>
+
+      <label>I am a</label>
       <div class="role-grid">
         <label class="role-card" id="card-student">
           <input type="radio" name="role" value="student" onclick="selectRole('student')">
@@ -148,10 +221,13 @@
           <span class="label">Landlord</span>
         </label>
       </div>
-      <button type="submit" class="btn">Create Account</button>
+
+      <button type="submit" class="btn">Create account</button>
     </form>
-    <div class="bottom">Already have an account? <a href="/login">Sign In</a></div>
+
+    <div class="bottom">Already have an account? <a href="/login">Sign in</a></div>
   </div>
+
   <script src="/js/validation.js"></script>
   <script>
     var EYE = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';

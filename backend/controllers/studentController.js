@@ -32,7 +32,7 @@ const SORT_MAP = {
 
 const searchHouses = (req, res) => {
   try {
-    const { keyword, min_rent, max_rent, bedrooms, sort, location } = req.query;
+    const { keyword, min_rent, max_rent, bedrooms, bathrooms, sort, location } = req.query;
     const amenities = req.query.amenities
       ? (Array.isArray(req.query.amenities) ? req.query.amenities : [req.query.amenities])
       : [];
@@ -64,6 +64,13 @@ const searchHouses = (req, res) => {
       if (!isNaN(n)) {
         if (n >= 4) { conditions.push(`h.bedrooms >= ?`); params.push(4); }
         else        { conditions.push(`h.bedrooms = ?`); params.push(n); }
+      }
+    }
+    if (bathrooms) {
+      const n = parseInt(bathrooms, 10);
+      if (!isNaN(n)) {
+        if (n >= 3) { conditions.push(`h.bathrooms >= ?`); params.push(3); }
+        else        { conditions.push(`h.bathrooms = ?`); params.push(n); }
       }
     }
     for (const am of amenities) {

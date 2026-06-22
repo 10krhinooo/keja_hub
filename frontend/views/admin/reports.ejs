@@ -9,11 +9,11 @@
   <script src="/js/dates.js"></script>
   <style>
     .table-wrap { overflow-x:auto; }
-    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.12); transition:background .15s; margin-right:4px; }
-    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
-    .filter-tab.active { background:white; color:#1a1a2e; }
-    .reason-toggle { background:none; border:none; color:#1565c0; font-size:12px; cursor:pointer; padding:0 0 0 4px; font-family:inherit; text-decoration:underline; }
-    .reason-toggle:hover { color:#0d47a1; }
+    .filter-tab { display:inline-block; padding:5px 14px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:#2D6A4F; background:white; border:1.5px solid #D4E6DB; transition:all .15s; margin-right:4px; }
+    .filter-tab:hover { background:#EEF5F0; border-color:#52B788; color:#1B4332; }
+    .filter-tab.active { background:#1B4332; color:white; border-color:#1B4332; }
+    .reason-toggle { background:none; border:none; color:#1B4332; font-size:12px; cursor:pointer; padding:0 0 0 4px; font-family:inherit; text-decoration:underline; }
+    .reason-toggle:hover { color:#2D6A4F; }
   </style>
 </head>
 <body>
@@ -21,8 +21,8 @@
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
-        <h2 style="font-size:20px;font-weight:700;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.3)">Reported Listings</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px"><%= reports.length %> report(s)</p>
+        <h2 style="font-size:20px;font-weight:700;color:#1a1a2e">Reported Listings</h2>
+        <p style="font-size:13px;color:#666;margin-top:2px"><%= reports.length %> report(s)</p>
       </div>
       <div>
         <a href="/admin/reports"               class="filter-tab <%= status===''?'active':'' %>">All</a>
@@ -52,7 +52,7 @@
             <% for (var i = 0; i < reports.length; i++) { %>
               <% var r = reports[i]; %>
               <tr>
-                <td><a href="/admin/house/<%= r.house_id %>" style="color:#1565c0;text-decoration:none;font-weight:500"><%= r.house_title %></a></td>
+                <td><a href="/admin/house/<%= r.house_id %>" style="color:#1B4332;text-decoration:none;font-weight:500"><%= r.house_title %></a></td>
                 <td><%= r.reported_by_name %></td>
                 <td class="reason-cell">
                   <span class="reason-short"><%= r.reason.length > 80 ? r.reason.slice(0, 80) + '…' : r.reason %></span>

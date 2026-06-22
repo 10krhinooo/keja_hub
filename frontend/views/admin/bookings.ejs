@@ -9,13 +9,13 @@
   <script src="/js/dates.js"></script>
   <style>
     .table-wrap { overflow-x:auto; }
-    .filter-tab { display:inline-block; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.1); transition:background .15s; margin-right:4px; }
-    .filter-tab:hover { background:rgba(255,255,255,0.2); color:white; }
-    .filter-tab.active { background:white; color:#1a1a2e; }
+    .filter-tab { display:inline-block; padding:6px 16px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; color:#2D6A4F; background:white; border:1.5px solid #D4E6DB; transition:all .15s; margin-right:4px; }
+    .filter-tab:hover { background:#EEF5F0; border-color:#52B788; }
+    .filter-tab.active { background:#1B4332; color:white; border-color:#1B4332; }
     .pagination { display:flex; gap:4px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
-    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:rgba(255,255,255,0.92); color:#1a1a2e; transition:background .15s; }
-    .pagination a:hover { background:#e3f2fd; }
-    .pagination a.active { background:#1565c0; color:white; }
+    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:white; color:#3D4F47; border:1px solid #D4E6DB; transition:all .15s; }
+    .pagination a:hover { background:#EEF5F0; border-color:#52B788; }
+    .pagination a.active { background:#1B4332; color:white; border-color:#1B4332; }
   </style>
 </head>
 <body>
@@ -24,8 +24,8 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div>
-        <h2 style="font-size:20px;font-weight:700;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.3)">All Bookings</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px"><%= totalCount %> booking(s) total</p>
+        <h2 style="font-size:20px;font-weight:700;color:#1a1a2e">All Bookings</h2>
+        <p style="font-size:13px;color:#666;margin-top:2px"><%= totalCount %> booking(s) total</p>
       </div>
       <div>
         <a href="/admin/bookings" class="filter-tab <%= status===''?'active':'' %>">All</a>
@@ -57,7 +57,7 @@
               <% var b = bookings[i]; %>
               <tr>
                 <td>
-                  <a href="/admin/house/<%= b.house_id %>" style="color:#1565c0;text-decoration:none;font-weight:500"><%= b.house_title %></a>
+                  <a href="/admin/house/<%= b.house_id %>" style="color:#1B4332;text-decoration:none;font-weight:500"><%= b.house_title %></a>
                   <br><span style="color:#999;font-size:11px">📍 <%= b.location %></span>
                 </td>
                 <td><%= b.student_name %><br><span style="color:#999;font-size:11px"><%= b.student_email %></span></td>
