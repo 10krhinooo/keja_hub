@@ -1,30 +1,50 @@
 (function () {
+  // Every message should say what happened and, on failure, what to do next.
   var TOAST_MESSAGES = {
     registered:        'Account created! Welcome to KejaHub.',
-    booking_sent:      'Booking request sent. The landlord will respond within 24 hours — check My Bookings for updates.',
+    booking_sent:      'Booking request sent. The landlord will respond within 24 hours. Check My Bookings for updates.',
     booking_accepted:  'Booking accepted. The student has been notified.',
     booking_declined:  'Booking declined. The student has been notified.',
-    listing_submitted: 'Listing submitted for review. Admins typically approve within 48 hours.',
+    listing_submitted: 'Listing submitted for review. Admins typically approve within 48 hours. You can keep editing it in the meantime.',
+    listing_updated:   'Changes saved and live. Students browsing KejaHub see your updated listing right away.',
+    listing_resubmitted: 'Changes saved and sent for review. Because this listing was previously rejected, an admin will take another look within 48 hours.',
     listing_approved:  'Listing approved and now visible to students.',
-    listing_rejected:  'Listing rejected. The landlord has been notified.',
+    listing_rejected:  'Listing rejected. The landlord has been notified with your reason.',
+    listing_deleted:   'Listing deleted, along with its photos, bookings, and reviews.',
+    photos_updated:    'Photos updated. Your new cover image and ordering are live.',
     review_posted:     'Review submitted. Thank you for helping other students!',
     report_filed:      'Report submitted. Our team will review it within 72 hours.',
     report_resolved:   'Report marked as resolved.',
-    login_failed:      'Incorrect email or password. Please try again.',
-    email_taken:       'That email is already in use. Try logging in instead.',
-    unauthorized:      "You don't have permission to do that.",
-    file_too_large:    'Image exceeds 5 MB. Please upload a smaller file.',
-    upload_type_error: 'Only JPEG, PNG, and WebP images are accepted.',
-    already_requested: 'You already have a pending request for this house.',
-    already_reviewed:  'You have already reviewed this listing.',
-    invalid_rating:    'Please select a valid rating (1–5 stars).',
-    invalid_report:    'Please describe the issue in more detail.',
     profile_updated:   'Profile updated successfully.',
     password_changed:  'Password changed successfully.',
-    wrong_password:    'Current password is incorrect.',
-    passwords_dont_match: 'New passwords do not match.',
-    password_too_short: 'New password must be at least 8 characters.',
+    password_reset:    'Password reset. You can now log in with your new password.',
+    reset_link_sent:   'If that email is registered, we have sent a reset link. It expires in 1 hour. Check your spam folder if it does not arrive.',
+
+    // ── Failures: always name the fix ──────────────────────────────────────
+    login_failed:      'Incorrect email or password. Check for typos, or use "Forgot password" to reset it.',
+    email_taken:       'That email is already registered. Try logging in instead, or reset your password.',
+    account_inactive:  'This account has been deactivated. Contact support@kejahub.com if you think this is a mistake.',
+    unauthorized:      "You don't have permission to do that. If you think this is wrong, try logging out and back in.",
+    session_expired:   'Your session expired for security. Please log in again to continue.',
+    file_too_large:    'That image is over 5 MB. Compress or resize it, then upload again. Nothing else on your form was lost.',
+    upload_type_error: 'Only JPEG, PNG, and WebP images are accepted. Convert the file and try again.',
+    too_many_photos:   'A listing can hold up to 10 photos. Remove a few existing ones, then add the new ones.',
+    upload_failed:     'Your photos could not be uploaded. Check your connection and try again. Your listing details were not changed.',
+    listing_not_found: 'That listing no longer exists, or it is not yours to edit.',
+    booking_not_found: 'That booking request no longer exists. Refresh the page to see the latest requests.',
+    invalid_booking_status: 'That is not a valid response to a booking. Please choose Accept or Decline.',
+    already_requested: 'You already have a pending request for this house. Watch My Bookings for the landlord\'s reply.',
+    already_reviewed:  'You have already reviewed this listing. You can only leave one review per house.',
+    invalid_rating:    'Please select a rating between 1 and 5 stars before submitting.',
+    invalid_report:    'Please describe the issue in a bit more detail so our team can act on it.',
+    wrong_password:    'Your current password is incorrect. Try again, or use "Forgot password" to reset it.',
+    passwords_dont_match: 'The two new passwords do not match. Please retype them.',
+    password_too_short: 'Your new password must be at least 8 characters.',
+    rate_limited:      'Too many attempts. Please wait a few minutes before trying again.',
+    email_send_failed: 'We could not send that email right now. Please try again in a few minutes.',
   };
+
+  var FALLBACK = 'Something went wrong. Please try again. If it keeps happening, contact support@kejahub.com.';
 
   function getContainer() {
     var c = document.getElementById('toast-container');
@@ -89,6 +109,7 @@
     success: function (msg) { show(msg, 'success'); },
     error:   function (msg) { show(msg, 'error'); },
     warning: function (msg) { show(msg, 'warning'); },
-    msg: function (key) { return TOAST_MESSAGES[key] || key; },
+    // Unknown keys must never leak a raw slug like "listing_not_found" to a user.
+    msg: function (key) { return TOAST_MESSAGES[key] || FALLBACK; },
   };
 })();

@@ -4,3 +4,8 @@ uploads/
 *.db
 .claude/
 CLAUDE.md
+*.db.tmp
+.sessions/
+
+# Local project documentation (not tracked)
+PROJECT_DOCUMENTATION.md

@@ -8,7 +8,7 @@ const csrfProtection = (req, res, next) => {
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
     const contentType = req.headers['content-type'] || '';
-    // Multipart forms are parsed by multer inside route handlers — those routes
+    // Multipart forms are parsed by multer inside route handlers, so those routes
     // use csrfVerify (below) after multer, so skip the check here.
     if (contentType.startsWith('multipart/form-data')) return next();
 

@@ -6,7 +6,8 @@ const dashboard = (req, res) => {
     const db = getDB();
     const result = db.exec(`
       SELECT h.*,
-        (SELECT image_path FROM house_images WHERE house_id=h.id AND is_primary=1 LIMIT 1) as primary_image,
+        (SELECT image_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
         (SELECT AVG(rating) FROM reviews WHERE house_id=h.id) as avg_rating,
         (SELECT COUNT(*) FROM reviews WHERE house_id=h.id) as review_count
       FROM houses h
@@ -93,7 +94,8 @@ const searchHouses = (req, res) => {
 
     const stmt = db.prepare(`
       SELECT h.*,
-        (SELECT image_path FROM house_images WHERE house_id=h.id AND is_primary=1 LIMIT 1) as primary_image,
+        (SELECT image_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
         ROUND((SELECT AVG(rating) FROM reviews WHERE house_id=h.id), 1) as avg_rating,
         (SELECT COUNT(*) FROM reviews WHERE house_id=h.id) as review_count
       FROM houses h
@@ -131,7 +133,9 @@ const viewHouse = (req, res) => {
     houseStmt.free();
     if (!house) return res.redirect('/student/search');
 
-    const imgStmt = db.prepare(`SELECT * FROM house_images WHERE house_id = ?`);
+    const imgStmt = db.prepare(
+      `SELECT * FROM house_images WHERE house_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC`
+    );
     imgStmt.bind([houseId]);
     const images = [];
     while (imgStmt.step()) images.push(imgStmt.getAsObject());
@@ -235,7 +239,8 @@ const myBookings = (req, res) => {
     const db = getDB();
     const stmt = db.prepare(`
       SELECT b.*, h.title as house_title, h.location, h.rent,
-        (SELECT image_path FROM house_images WHERE house_id=h.id AND is_primary=1 LIMIT 1) as primary_image
+        (SELECT image_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image
       FROM bookings b JOIN houses h ON b.house_id = h.id
       WHERE b.student_id = ?
       ORDER BY b.created_at DESC

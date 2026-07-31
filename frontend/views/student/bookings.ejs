@@ -38,7 +38,7 @@
             <% if (b.visit_date) { %><p style="font-size:13px;color:#666;margin-bottom:4px">Visit Date: <span class="date-val"><%= b.visit_date %></span></p><% } %>
             <span class="badge badge-<%= b.status %>"><%= b.status.charAt(0).toUpperCase() + b.status.slice(1) %></span>
             <% if (b.status === 'accepted') { %>
-              <p style="font-size:12px;color:#2e7d32;margin-top:6px;font-weight:500">Accepted — <a href="/student/house/<%= b.house_id %>" style="color:#2e7d32">View listing</a> for landlord contact details.</p>
+              <p style="font-size:12px;color:#2e7d32;margin-top:6px;font-weight:500">Accepted. <a href="/student/house/<%= b.house_id %>" style="color:#2e7d32">View listing</a> for landlord contact details.</p>
             <% } %>
           </div>
         </div>

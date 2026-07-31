@@ -7,13 +7,18 @@
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/toast.js"></script>
   <script src="/js/validation.js"></script>
+  <script src="/js/photo-manager.js"></script>
 </head>
 <body>
   <%- include('../partials/nav-landlord') %>
   <div style="max-width:700px;margin:32px auto;padding:0 24px">
     <a href="/landlord/house/<%= house.id %>" style="display:inline-block;margin-bottom:16px;color:#1B4332;text-decoration:none;font-size:14px;font-weight:500">← Back To Listing</a>
     <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px">Edit Listing</h2>
-    <p style="font-size:13px;color:#888;margin-bottom:24px">Saving changes will reset your listing to <strong>pending review</strong> — it will be hidden from students until the admin approves it again.</p>
+    <% if (house.status === 'rejected') { %>
+      <p style="font-size:13px;color:#888;margin-bottom:24px">This listing was rejected. Saving your changes resubmits it for review. An admin will take another look within 48 hours.</p>
+    <% } else { %>
+      <p style="font-size:13px;color:#888;margin-bottom:24px">Your changes go live as soon as you save. Students see the updated listing right away.</p>
+    <% } %>
     <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
     <div class="card">
       <form method="POST" action="/landlord/house/<%= house.id %>/edit" enctype="multipart/form-data" data-validate-form>
@@ -80,9 +85,8 @@
 
         <label>Amenities</label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px">
-          <% var allAmenities = ['WiFi','Water','Electricity','Parking','Security','CCTV','Furnished','Kitchen','Balcony']; %>
-          <% for (var ai = 0; ai < allAmenities.length; ai++) { %>
-            <% var am = allAmenities[ai]; %>
+          <% for (var ai = 0; ai < amenityOptions.length; ai++) { %>
+            <% var am = amenityOptions[ai]; %>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:0;font-weight:400">
               <input type="checkbox" name="amenities" value="<%= am %>" style="width:auto" <%= amenities.indexOf(am) > -1 ? 'checked' : '' %>>
               <%= am %>
@@ -90,28 +94,47 @@
           <% } %>
         </div>
 
-        <% if (images.length > 0) { %>
-          <label style="margin-top:20px">Current Photos <span style="font-size:12px;color:#888;font-weight:400">(check to remove)</span></label>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:8px">
-            <% for (var j = 0; j < images.length; j++) { %>
-              <% var img = images[j]; %>
-              <label style="position:relative;cursor:pointer;display:block;margin:0">
-                <img src="<%= img.image_path %>" alt="Photo" id="img-prev-<%= img.id %>"
-                  style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:2px solid #e0e0e0;transition:border-color .15s,opacity .15s">
-                <input type="checkbox" name="delete_images" value="<%= img.id %>"
-                  style="position:absolute;top:6px;right:6px;width:16px;height:16px;accent-color:#c62828"
-                  onchange="toggleImgDelete(this,'img-prev-<%= img.id %>')">
-                <% if (img.is_primary) { %>
-                  <span style="position:absolute;bottom:6px;left:6px;background:#1B4332;color:white;font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600">Primary</span>
-                <% } %>
-              </label>
-            <% } %>
-          </div>
-        <% } %>
+        <div data-photo-manager data-max-new="<%= maxImages - images.length %>">
+          <input type="hidden" name="image_order" data-photo-order value="">
 
-        <label style="margin-top:20px">Add New Photos <span style="font-size:12px;color:#888;font-weight:400">(up to 10)</span></label>
-        <input type="file" name="images" id="house-images-input" multiple accept="image/*">
-        <div id="image-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:10px"></div>
+          <% if (images.length > 0) { %>
+            <label style="margin-top:20px">Current Photos</label>
+            <p style="font-size:12px;color:#888;margin:0 0 8px">
+              Drag photos to reorder them, or use the arrows. The cover photo is what students see first in search results.
+            </p>
+            <div class="photo-grid" data-photo-grid>
+              <% for (var j = 0; j < images.length; j++) { var img = images[j]; %>
+                <div class="photo-tile <%= img.is_primary ? 'is-cover' : '' %>" draggable="true" data-image-id="<%= img.id %>">
+                  <img src="<%= img.image_path %>" alt="Listing photo <%= j + 1 %>">
+                  <input type="checkbox" class="photo-tile-delete" name="delete_images" value="<%= img.id %>"
+                    data-photo-delete aria-label="Remove photo <%= j + 1 %>">
+                  <% if (img.is_primary) { %><span class="photo-badge">Cover</span><% } %>
+                  <div class="photo-tile-bar">
+                    <button type="button" class="photo-tile-move" data-move="left" aria-label="Move photo <%= j + 1 %> earlier">&#8592;</button>
+                    <span class="photo-tile-position" data-photo-position></span>
+                    <label class="photo-tile-cover">
+                      <input type="radio" name="primary_image" value="<%= img.id %>"
+                        data-photo-cover <%= img.is_primary ? 'checked' : '' %>>
+                      Cover
+                    </label>
+                    <button type="button" class="photo-tile-move" data-move="right" aria-label="Move photo <%= j + 1 %> later">&#8594;</button>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } else { %>
+            <p style="font-size:13px;color:#888;margin-top:20px">This listing has no photos yet. Listings with photos get far more enquiries.</p>
+          <% } %>
+
+          <label style="margin-top:20px">Add More Photos</label>
+          <div class="photo-dropzone" data-photo-dropzone>
+            <input type="file" name="images" multiple accept="image/jpeg,image/png,image/webp" data-photo-input>
+            <div style="font-size:14px;font-weight:600;color:#1B4332">Drag photos here, or click to browse</div>
+            <div class="photo-dropzone-hint">JPEG, PNG, or WebP · up to 5 MB each</div>
+            <div class="photo-dropzone-hint" data-photo-counter></div>
+            <div class="photo-grid" data-photo-preview></div>
+          </div>
+        </div>
 
         <div style="display:flex;gap:12px;margin-top:24px">
           <button type="submit" class="btn" style="flex:1;padding:13px">Save Changes</button>
@@ -120,9 +143,6 @@
       </form>
     </div>
   </div>
-  <style>
-    #image-preview-grid img { width:100%; height:90px; object-fit:cover; border-radius:8px; border:1.5px solid #e0e0e0; display:block; }
-  </style>
   <script>
     (function () {
       var locSelect = document.getElementById('loc-select');
@@ -146,35 +166,6 @@
       });
     })();
 
-    function toggleImgDelete(checkbox, imgId) {
-      var img = document.getElementById(imgId);
-      if (checkbox.checked) {
-        img.style.opacity = '0.35';
-        img.style.borderColor = '#c62828';
-      } else {
-        img.style.opacity = '1';
-        img.style.borderColor = '#e0e0e0';
-      }
-    }
-
-    (function () {
-      var input = document.getElementById('house-images-input');
-      var grid  = document.getElementById('image-preview-grid');
-      input.addEventListener('change', function () {
-        grid.innerHTML = '';
-        var files = Array.from(input.files).slice(0, 10);
-        files.forEach(function (file) {
-          if (!file.type.startsWith('image/')) return;
-          var reader = new FileReader();
-          reader.onload = function (e) {
-            var img = document.createElement('img');
-            img.src = e.target.result;
-            grid.appendChild(img);
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-    })();
   </script>
 </body>
 </html>
