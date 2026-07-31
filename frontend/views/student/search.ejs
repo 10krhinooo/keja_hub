@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Search Houses — KejaHub</title>
+  <title>Search Houses | KejaHub</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/toast.js"></script>
   <script src="/js/skeleton.js"></script>
@@ -132,7 +132,7 @@
     <div class="results-bar">
       <h3 style="font-size:17px;font-weight:600;color:#1A1A1A">
         <%= totalCount %> Listing<% if (totalCount !== 1) { %>s<% } %> Found
-        <% if (totalPages > 1) { %><span style="font-size:13px;font-weight:400;color:#7A9088"> — Page <%= page %> of <%= totalPages %></span><% } %>
+        <% if (totalPages > 1) { %><span style="font-size:13px;font-weight:400;color:#7A9088"> Page <%= page %> of <%= totalPages %></span><% } %>
       </h3>
       <% if (amenities.length > 0 || filters.keyword || filters.location || filters.min_rent || filters.max_rent || filters.bedrooms || filters.bathrooms) { %>
         <a href="/student/search" style="font-size:13px;color:#C62828;text-decoration:none;font-weight:500">✕ Clear filters</a>

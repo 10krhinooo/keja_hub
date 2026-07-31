@@ -1,14 +1,36 @@
 const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const path = require('path');
 const { getDB, saveDB, rowsToObjects, getDistinctLocations } = require('../database');
+const { AMENITY_OPTIONS, validateHouseInput } = require('../utils/validateHouse');
+const {
+  MAX_IMAGES_PER_HOUSE,
+  deleteImageFiles,
+  deleteUploadedFiles,
+  getHouseImagePaths,
+  getHouseImages,
+  normalizePrimary,
+  applyImageOrder,
+  nextSortOrder,
+  countHouseImages,
+} = require('../utils/houseImages');
+
+// A listing always needs a cover image, even if the flagged primary was deleted,
+// falling back to sort order keeps thumbnails from silently going blank.
+const PRIMARY_IMAGE_SQL = `
+  (SELECT image_path FROM house_images WHERE house_id = h.id
+     ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image`;
+
+function parseIdList(value) {
+  if (value === undefined || value === null) return [];
+  const raw = Array.isArray(value) ? value : String(value).split(',');
+  return raw.map(v => parseInt(v, 10)).filter(v => !isNaN(v));
+}
 
 const dashboard = (req, res) => {
   try {
     const db = getDB();
     const stmt = db.prepare(`
       SELECT h.*, COUNT(b.id) as booking_count,
-        (SELECT image_path FROM house_images WHERE house_id=h.id AND is_primary=1 LIMIT 1) as primary_image
+        ${PRIMARY_IMAGE_SQL}
       FROM houses h
       LEFT JOIN bookings b ON h.id = b.house_id
       WHERE h.landlord_id = ?
@@ -26,23 +48,31 @@ const dashboard = (req, res) => {
   }
 };
 
-const showAddHouse = (req, res) => {
-  const locations = getDistinctLocations();
-  res.render('landlord/add-house', { error: null, locations });
-};
+function renderAddHouse(res, { error = null, values = {} } = {}) {
+  res.render('landlord/add-house', {
+    error,
+    values,
+    locations: getDistinctLocations(),
+    amenityOptions: AMENITY_OPTIONS,
+    maxImages: MAX_IMAGES_PER_HOUSE,
+  });
+}
+
+const showAddHouse = (req, res) => renderAddHouse(res);
 
 const addHouse = (req, res) => {
   try {
-    const { title, description, rent, location_select, location_new, estate, bedrooms, bathrooms, amenities } = req.body;
+    const { errors, values } = validateHouseInput(req.body);
 
-    const location = (location_select === '__new__'
-      ? (location_new || '').trim()
-      : (location_select || '').trim()
-    ).slice(0, 60);
+    if (req.files && req.files.length > MAX_IMAGES_PER_HOUSE) {
+      errors.push(`You can upload up to ${MAX_IMAGES_PER_HOUSE} photos but you selected ${req.files.length}.`);
+    }
 
-    if (!location) {
-      const locations = getDistinctLocations();
-      return res.render('landlord/add-house', { error: 'Location is required', locations });
+    if (errors.length) {
+      // Multer already wrote these to disk; drop them so failed submissions
+      // don't leave orphaned files behind.
+      deleteUploadedFiles(req.files);
+      return renderAddHouse(res, { error: errors.join(' '), values: req.body });
     }
 
     const db = getDB();
@@ -50,33 +80,32 @@ const addHouse = (req, res) => {
     db.run(
       `INSERT INTO houses (landlord_id, title, description, rent, location, estate, bedrooms, bathrooms)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.session.user.id, title, description || null, parseFloat(rent), location, estate || null,
-       parseInt(bedrooms) || 1, parseInt(bathrooms) || 1]
+      [req.session.user.id, values.title, values.description, values.rent, values.location,
+       values.estate || null, values.bedrooms, values.bathrooms]
     );
 
     const houseId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
 
-    if (amenities) {
-      const list = Array.isArray(amenities) ? amenities : [amenities];
-      list.forEach(a => {
-        if (a.trim()) db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, a.trim()]);
-      });
-    }
+    values.amenities.forEach(name => {
+      db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
+    });
 
-    if (req.files && req.files.length > 0) {
-      req.files.forEach((file, index) => {
-        db.run(
-          `INSERT INTO house_images (house_id, image_path, is_primary) VALUES (?, ?, ?)`,
-          [houseId, '/uploads/houses/' + file.filename, index === 0 ? 1 : 0]
-        );
-      });
-    }
+    (req.files || []).forEach((file, index) => {
+      db.run(
+        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, ?, ?)`,
+        [houseId, '/uploads/houses/' + file.filename, index === 0 ? 1 : 0, index]
+      );
+    });
 
     saveDB();
     res.redirect('/landlord/dashboard?success=listing_submitted');
   } catch (err) {
-    const locations = getDistinctLocations();
-    res.render('landlord/add-house', { error: err.message, locations });
+    console.error('Add house error:', err);
+    deleteUploadedFiles(req.files);
+    renderAddHouse(res, {
+      error: 'We could not save your listing. Please try again. If it keeps happening, contact support.',
+      values: req.body,
+    });
   }
 };
 
@@ -91,13 +120,9 @@ const showHouse = (req, res) => {
     houseStmt.bind([houseId, req.session.user.id]);
     const house = houseStmt.step() ? houseStmt.getAsObject() : null;
     houseStmt.free();
-    if (!house) return res.redirect('/landlord/dashboard');
+    if (!house) return res.redirect('/landlord/dashboard?error=listing_not_found');
 
-    const imgStmt = db.prepare(`SELECT * FROM house_images WHERE house_id = ?`);
-    imgStmt.bind([houseId]);
-    const images = [];
-    while (imgStmt.step()) images.push(imgStmt.getAsObject());
-    imgStmt.free();
+    const images = getHouseImages(db, houseId);
 
     const amenStmt = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`);
     amenStmt.bind([houseId]);
@@ -124,12 +149,18 @@ const showHouse = (req, res) => {
 };
 
 const updateBooking = (req, res) => {
+  // Express 5 removed the 'back' magic string from res.redirect().
+  const goBack = (err) => res.redirect(
+    (req.get('Referer') || '/landlord/dashboard') +
+    (err ? (req.get('Referer') || '').includes('?') ? `&error=${err}` : `?error=${err}` : '')
+  );
+
   try {
     const { status } = req.body;
-    if (!['accepted', 'declined'].includes(status)) return res.redirect('back');
+    if (!['accepted', 'declined'].includes(status)) return goBack('invalid_booking_status');
 
     const bookingId = parseInt(req.params.id, 10);
-    if (isNaN(bookingId)) return res.redirect('back');
+    if (isNaN(bookingId)) return goBack('booking_not_found');
 
     const db = getDB();
 
@@ -138,7 +169,7 @@ const updateBooking = (req, res) => {
     const found = bStmt.step();
     const { house_id } = found ? bStmt.getAsObject() : {};
     bStmt.free();
-    if (!house_id) return res.redirect('back');
+    if (!house_id) return goBack('booking_not_found');
 
     db.run(`UPDATE bookings SET status = ? WHERE id = ?`, [status, bookingId]);
     saveDB();
@@ -149,32 +180,43 @@ const updateBooking = (req, res) => {
   }
 };
 
+function findOwnedHouse(db, houseId, landlordId) {
+  const stmt = db.prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`);
+  stmt.bind([houseId, landlordId]);
+  const house = stmt.step() ? stmt.getAsObject() : null;
+  stmt.free();
+  return house;
+}
+
+function renderEditHouse(res, db, house, { error = null, amenities, values } = {}) {
+  if (!amenities) {
+    const stmt = db.prepare(`SELECT name FROM amenities WHERE house_id = ?`);
+    stmt.bind([house.id]);
+    amenities = [];
+    while (stmt.step()) amenities.push(stmt.getAsObject().name);
+    stmt.free();
+  }
+  res.render('landlord/edit-house', {
+    house: values ? { ...house, ...values } : house,
+    images: getHouseImages(db, house.id),
+    amenities,
+    locations: getDistinctLocations(),
+    amenityOptions: AMENITY_OPTIONS,
+    maxImages: MAX_IMAGES_PER_HOUSE,
+    error,
+  });
+}
+
 const showEditHouse = (req, res) => {
   try {
     const houseId = parseInt(req.params.id, 10);
-    if (isNaN(houseId)) return res.redirect('/landlord/dashboard');
+    if (isNaN(houseId)) return res.redirect('/landlord/dashboard?error=listing_not_found');
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`);
-    houseStmt.bind([houseId, req.session.user.id]);
-    const house = houseStmt.step() ? houseStmt.getAsObject() : null;
-    houseStmt.free();
-    if (!house) return res.redirect('/landlord/dashboard');
+    const house = findOwnedHouse(db, houseId, req.session.user.id);
+    if (!house) return res.redirect('/landlord/dashboard?error=listing_not_found');
 
-    const imgStmt = db.prepare(`SELECT * FROM house_images WHERE house_id = ?`);
-    imgStmt.bind([houseId]);
-    const images = [];
-    while (imgStmt.step()) images.push(imgStmt.getAsObject());
-    imgStmt.free();
-
-    const amenStmt = db.prepare(`SELECT name FROM amenities WHERE house_id = ?`);
-    amenStmt.bind([houseId]);
-    const amenities = [];
-    while (amenStmt.step()) amenities.push(amenStmt.getAsObject().name);
-    amenStmt.free();
-
-    const locations = getDistinctLocations();
-    res.render('landlord/edit-house', { house, images, amenities, locations, error: null });
+    renderEditHouse(res, db, house);
   } catch (err) {
     console.error('Show edit house error:', err);
     res.status(500).send('Something went wrong. Please try again.');
@@ -182,89 +224,107 @@ const showEditHouse = (req, res) => {
 };
 
 const editHouse = (req, res) => {
+  const db = getDB();
+  let house = null;
+
   try {
     const houseId = parseInt(req.params.id, 10);
-    if (isNaN(houseId)) return res.redirect('/landlord/dashboard');
-    const db = getDB();
+    if (isNaN(houseId)) {
+      deleteUploadedFiles(req.files);
+      return res.redirect('/landlord/dashboard?error=listing_not_found');
+    }
 
-    const checkStmt = db.prepare(`SELECT id FROM houses WHERE id = ? AND landlord_id = ?`);
-    checkStmt.bind([houseId, req.session.user.id]);
-    const exists = checkStmt.step();
-    checkStmt.free();
-    if (!exists) return res.redirect('/landlord/dashboard');
+    house = findOwnedHouse(db, houseId, req.session.user.id);
+    if (!house) {
+      deleteUploadedFiles(req.files);
+      return res.redirect('/landlord/dashboard?error=listing_not_found');
+    }
 
-    const { title, description, rent, location_select, location_new, estate, bedrooms, bathrooms, amenities, delete_images } = req.body;
+    const { errors, values } = validateHouseInput(req.body);
 
-    const location = (location_select === '__new__'
-      ? (location_new || '').trim()
-      : (location_select || '').trim()
-    ).slice(0, 60);
+    // Only ids that actually belong to this listing. Never trust the client's list.
+    const ownedIds = new Set(getHouseImages(db, houseId).map(img => img.id));
+    const toDelete = parseIdList(req.body.delete_images).filter(id => ownedIds.has(id));
+    const newCount = (req.files || []).length;
+    const finalCount = ownedIds.size - toDelete.length + newCount;
 
-    if (!location) {
-      const locations = getDistinctLocations();
-      const imgStmt = db.prepare(`SELECT * FROM house_images WHERE house_id = ?`);
-      imgStmt.bind([houseId]);
-      const images = [];
-      while (imgStmt.step()) images.push(imgStmt.getAsObject());
-      imgStmt.free();
-      const houseStmt = db.prepare(`SELECT * FROM houses WHERE id = ?`);
-      houseStmt.bind([houseId]);
-      const house = houseStmt.step() ? houseStmt.getAsObject() : {};
-      houseStmt.free();
-      return res.render('landlord/edit-house', {
-        house, images,
-        amenities: Array.isArray(amenities) ? amenities : (amenities ? [amenities] : []),
-        locations, error: 'Location is required'
+    if (finalCount > MAX_IMAGES_PER_HOUSE) {
+      const room = MAX_IMAGES_PER_HOUSE - (ownedIds.size - toDelete.length);
+      errors.push(
+        `A listing can have at most ${MAX_IMAGES_PER_HOUSE} photos. You have room for ` +
+        `${room === 1 ? '1 more photo' : `${room} more photos`} but added ${newCount}. ` +
+        `Remove some existing photos or upload fewer new ones.`
+      );
+    }
+
+    if (errors.length) {
+      deleteUploadedFiles(req.files);
+      return renderEditHouse(res, db, house, {
+        error: errors.join(' '),
+        amenities: values.amenities,
+        values: {
+          title: req.body.title, description: req.body.description,
+          rent: req.body.rent, estate: req.body.estate,
+          bedrooms: values.bedrooms, bathrooms: values.bathrooms,
+        },
       });
     }
+
+    // Admin approval happens once, at creation. Later edits go live immediately,
+    // except on a rejected listing, where saving counts as a resubmission.
+    const nextStatus = house.status === 'rejected' ? 'pending' : house.status;
 
     db.run(
       `UPDATE houses SET title=?, description=?, rent=?, location=?, estate=?, bedrooms=?, bathrooms=?,
-       status='pending', rejection_reason=NULL WHERE id=?`,
-      [title, description || null, parseFloat(rent), location, estate || null,
-       parseInt(bedrooms) || 1, parseInt(bathrooms) || 1, houseId]
+       status=?, rejection_reason=NULL WHERE id=?`,
+      [values.title, values.description, values.rent, values.location, values.estate || null,
+       values.bedrooms, values.bathrooms, nextStatus, houseId]
     );
 
     db.run(`DELETE FROM amenities WHERE house_id = ?`, [houseId]);
-    if (amenities) {
-      const list = Array.isArray(amenities) ? amenities : [amenities];
-      list.forEach(a => {
-        if (a.trim()) db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, a.trim()]);
-      });
+    values.amenities.forEach(name => {
+      db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
+    });
+
+    if (toDelete.length) {
+      const placeholders = toDelete.map(() => '?').join(',');
+      const pathStmt = db.prepare(
+        `SELECT image_path FROM house_images WHERE house_id = ? AND id IN (${placeholders})`
+      );
+      pathStmt.bind([houseId, ...toDelete]);
+      const removedPaths = [];
+      while (pathStmt.step()) removedPaths.push(pathStmt.getAsObject().image_path);
+      pathStmt.free();
+
+      db.run(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`, [houseId, ...toDelete]);
+      deleteImageFiles(removedPaths);
     }
 
-    if (delete_images) {
-      const toDelete = Array.isArray(delete_images) ? delete_images : [delete_images];
-      toDelete.forEach(imgId => {
-        const pathStmt = db.prepare(`SELECT image_path FROM house_images WHERE id = ? AND house_id = ?`);
-        pathStmt.bind([parseInt(imgId, 10), houseId]);
-        if (pathStmt.step()) {
-          const imgPath = pathStmt.getAsObject().image_path;
-          try { fs.unlinkSync(path.join(__dirname, '../../', imgPath)); } catch (_) {}
-        }
-        pathStmt.free();
-        db.run(`DELETE FROM house_images WHERE id = ? AND house_id = ?`, [parseInt(imgId, 10), houseId]);
-      });
-    }
+    let order = nextSortOrder(db, houseId);
+    (req.files || []).forEach(file => {
+      db.run(
+        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, 0, ?)`,
+        [houseId, '/uploads/houses/' + file.filename, order++]
+      );
+    });
 
-    if (req.files && req.files.length > 0) {
-      const cntStmt = db.prepare(`SELECT COUNT(*) as cnt FROM house_images WHERE house_id = ?`);
-      cntStmt.bind([houseId]);
-      cntStmt.step();
-      const cnt = cntStmt.getAsObject().cnt || 0;
-      cntStmt.free();
-      req.files.forEach((file, index) => {
-        db.run(
-          `INSERT INTO house_images (house_id, image_path, is_primary) VALUES (?, ?, ?)`,
-          [houseId, '/uploads/houses/' + file.filename, (cnt === 0 && index === 0) ? 1 : 0]
-        );
-      });
-    }
+    applyImageOrder(db, houseId, parseIdList(req.body.image_order).filter(id => !toDelete.includes(id)));
+    normalizePrimary(db, houseId, parseInt(req.body.primary_image, 10));
 
     saveDB();
-    res.redirect(`/landlord/house/${houseId}?success=listing_updated`);
+
+    const success = nextStatus === 'pending' && house.status === 'rejected'
+      ? 'listing_resubmitted'
+      : 'listing_updated';
+    res.redirect(`/landlord/house/${houseId}?success=${success}`);
   } catch (err) {
     console.error('Edit house error:', err);
+    deleteUploadedFiles(req.files);
+    if (house) {
+      return renderEditHouse(res, db, house, {
+        error: 'We could not save your changes. Your listing is unchanged. Please try again.',
+      });
+    }
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -276,30 +336,22 @@ const deleteHouse = (req, res) => {
 
     const db = getDB();
 
-    const ownerStmt = db.prepare(`SELECT id FROM houses WHERE id = ? AND landlord_id = ?`);
-    ownerStmt.bind([houseId, req.session.user.id]);
-    const owned = ownerStmt.step();
-    ownerStmt.free();
-    if (!owned) return res.redirect('/landlord/dashboard');
+    const owned = findOwnedHouse(db, houseId, req.session.user.id);
+    if (!owned) return res.redirect('/landlord/dashboard?error=listing_not_found');
 
-    const imgPathStmt = db.prepare(`SELECT image_path FROM house_images WHERE house_id = ?`);
-    imgPathStmt.bind([houseId]);
-    const imgPaths = [];
-    while (imgPathStmt.step()) imgPaths.push(imgPathStmt.getAsObject().image_path);
-    imgPathStmt.free();
+    const imgPaths = getHouseImagePaths(db, houseId);
 
     db.run(`DELETE FROM bookings     WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM reviews      WHERE house_id = ?`, [houseId]);
+    db.run(`DELETE FROM reports      WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM amenities    WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM houses       WHERE id = ?`,       [houseId]);
     saveDB();
 
-    imgPaths.forEach(p => {
-      try { fs.unlinkSync(path.join(__dirname, '../../', p)); } catch (_) {}
-    });
+    deleteImageFiles(imgPaths);
 
-    res.redirect('/landlord/dashboard');
+    res.redirect('/landlord/dashboard?success=listing_deleted');
   } catch (err) {
     console.error('Delete house error:', err);
     res.status(500).send('Something went wrong. Please try again.');

@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { getDB, saveDB, rowsToObjects, firstRow } = require('../database');
+const { deleteImageFiles, getHouseImagePaths, getHouseImages } = require('../utils/houseImages');
 
 const PER_PAGE = 15;
 
@@ -160,11 +161,7 @@ const viewHouse = (req, res) => {
     houseStmt.free();
     if (!house) return res.redirect('/admin/dashboard');
 
-    const imgStmt = db.prepare(`SELECT * FROM house_images WHERE house_id = ?`);
-    imgStmt.bind([houseId]);
-    const images = [];
-    while (imgStmt.step()) images.push(imgStmt.getAsObject());
-    imgStmt.free();
+    const images = getHouseImages(db, houseId);
 
     const amenStmt = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`);
     amenStmt.bind([houseId]);
@@ -239,6 +236,8 @@ const deleteHouse = (req, res) => {
     const houseId = parseInt(req.params.id, 10);
     if (isNaN(houseId)) return res.redirect('/admin/dashboard');
     const db = getDB();
+    // Collect file paths before the rows go, so the images don't outlive the listing.
+    const imgPaths = getHouseImagePaths(db, houseId);
     db.run(`DELETE FROM amenities   WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM bookings    WHERE house_id = ?`, [houseId]);
@@ -246,6 +245,7 @@ const deleteHouse = (req, res) => {
     db.run(`DELETE FROM reports     WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM houses      WHERE id = ?`,       [houseId]);
     saveDB();
+    deleteImageFiles(imgPaths);
     res.redirect('/admin/listings?success=listing_deleted');
   } catch (err) {
     console.error('Delete house error:', err);

@@ -27,7 +27,7 @@
           <strong>Rejection reason:</strong> <%= house.rejection_reason %>
         </p>
       <% } else if (house.status === 'pending') { %>
-        <p style="font-size:13px;color:#e65100;margin-top:8px">Awaiting admin review — your listing is not visible to students yet.</p>
+        <p style="font-size:13px;color:#e65100;margin-top:8px">Awaiting admin review. Your listing is not visible to students yet.</p>
       <% } %>
       <% if (house.description) { %>
         <p style="margin-top:12px;color:#555;font-size:14px;line-height:1.7"><%= house.description %></p>

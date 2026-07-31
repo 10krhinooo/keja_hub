@@ -126,6 +126,22 @@ async function initDB() {
   // Safe migration: add rejection_reason column if not present
   try { db.run(`ALTER TABLE houses ADD COLUMN rejection_reason TEXT`); } catch (_) {}
 
+  // Safe migration: add sort_order so landlords can reorder listing photos.
+  // Backfill by id so existing galleries keep their original upload order.
+  try {
+    db.run(`ALTER TABLE house_images ADD COLUMN sort_order INTEGER DEFAULT 0`);
+    db.run(`UPDATE house_images SET sort_order = id`);
+  } catch (_) {}
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_house_images_house ON house_images(house_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_amenities_house    ON amenities(house_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_house     ON bookings(house_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_student   ON bookings(student_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_house      ON reviews(house_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_reports_house      ON reports(house_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_houses_landlord    ON houses(landlord_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_houses_status      ON houses(status, is_available)`);
+
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) throw new Error('ADMIN_PASSWORD env var is required');
 
@@ -147,6 +163,13 @@ async function initDB() {
 }
 
 function seedSampleData(db) {
+  // Never seed demo accounts (all using `password123`) into a production database.
+  // Set SEED=true to override, e.g. for a staging environment.
+  if (process.env.NODE_ENV === 'production' && process.env.SEED !== 'true') {
+    console.log('Seed skipped: NODE_ENV=production (set SEED=true to force)');
+    return;
+  }
+
   const check = db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`);
   check.step();
   const count = check.getAsObject().c;
@@ -296,7 +319,7 @@ function seedSampleData(db) {
 
   // ── Images (one placeholder per house) ────────────────────────────────────
   houseIds.forEach(hId => {
-    db.run(`INSERT INTO house_images (house_id,image_path,is_primary) VALUES (?,?,?)`, [hId, '/images/background.jpg', 1]);
+    db.run(`INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`, [hId, '/images/background.jpg', 1, 0]);
   });
 
   // ── Reviews (idx = houseIds index, only approved houses) ──────────────────
@@ -363,7 +386,7 @@ function seedSampleData(db) {
 
   // ── Reports ────────────────────────────────────────────────────────────────
   const reportDefs = [
-    [houseIds[1],  kevinId,   'The landlord listed incorrect amenities — WiFi is not actually available at this property.', 'open'],
+    [houseIds[1],  kevinId,   'The landlord listed incorrect amenities. WiFi is not actually available at this property.', 'open'],
     [houseIds[3],  aminaId,   'Photos do not match the actual property. The house appears much older in person.', 'resolved'],
     [houseIds[20], mosesId,   'The listed rent is different from what the landlord quoted on the phone. Misleading listing.', 'open'],
     [houseIds[7],  faithId,   'Security guard is often absent despite being listed as a key amenity.', 'resolved'],
@@ -376,9 +399,18 @@ function seedSampleData(db) {
   console.log('Sample data seeded: 6 landlords, 12 students, 33 houses, 34 reviews, 14 bookings, 5 reports');
 }
 
+// Write to a temp file then rename. rename() is atomic on POSIX, so a crash
+// mid-save leaves the previous database intact instead of a truncated file.
 function saveDB() {
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
+  if (!db) return;
+  const tmpPath = DB_PATH + '.tmp';
+  try {
+    fs.writeFileSync(tmpPath, Buffer.from(db.export()));
+    fs.renameSync(tmpPath, DB_PATH);
+  } catch (err) {
+    console.error('Database save failed:', err.message);
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+  }
 }
 
 function getDB() { return db; }
