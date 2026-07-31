@@ -182,34 +182,3 @@ changes, go live immediately and stay visible to students. Editing a
 *rejected* listing is the one exception: that counts as a resubmission and
 returns it to `pending`.
 
-## Known Limitations
-
-- **No migration tool:** Schema changes are applied as idempotent
-  `ALTER TABLE … ADD COLUMN` statements wrapped in try/catch in
-  `database.js` (see `rejection_reason` and `sort_order`). There is no
-  versioned migration history or down-migration.
-- **Single process only:** sql.js holds the whole database in memory and
-  rewrites the entire file on save. The app cannot be clustered or scaled
-  horizontally, and save cost grows with database size. Migrating to
-  `better-sqlite3` (same SQL, real transactions) or Postgres is the path
-  before meaningful traffic.
-- **Partial pagination:** Student search (12/page), admin listings
-  (15/page), and admin bookings (20/page) are paginated. Admin users, admin
-  reports, the landlord dashboard, and per-house review lists still return
-  all rows.
-- **Local file storage:** Uploaded images live in `uploads/houses/` on the
-  local filesystem. On an ephemeral host (Heroku, Render, Fly) they are
-  **lost on every deploy**, so use S3/Cloudinary or a persistent volume.
-- **Email is transactional only:** Password reset is wired up; email
-  verification and booking notifications are not.
-- **Inline event handlers:** ~29 `onclick`/`onsubmit` attributes remain in
-  the views, so the CSP has to allow `script-src-attr 'unsafe-inline'`.
-  Moving them to `addEventListener` would let that directive be dropped.
-- **Persistence window:** The database is saved after every write, flushed
-  on `SIGTERM`/`SIGINT`, and snapshotted every 5 seconds as a fallback.
-  Saves are atomic (temp file + rename), so a crash cannot corrupt the
-  database, but a `kill -9` between writes can still lose the last write.
-
-## Screenshots
-
-*(Add screenshots to `docs/screenshots/` and link them here)*
