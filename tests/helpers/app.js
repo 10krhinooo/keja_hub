@@ -76,4 +76,9 @@ const CREDENTIALS = {
   adminPassword: process.env.ADMIN_PASSWORD,
 };
 
-module.exports = { createTestApp, freshDbPath, TMP_ROOT, CREDENTIALS };
+// A fresh password for tests that change one. Generated rather than written
+// down for the same reason as the credentials above, and always comfortably
+// over the eight character minimum the app enforces.
+const newPassword = () => 'Aa1' + crypto.randomBytes(12).toString('base64url');
+
+module.exports = { createTestApp, freshDbPath, TMP_ROOT, CREDENTIALS, newPassword };
