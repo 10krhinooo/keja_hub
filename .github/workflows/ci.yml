@@ -24,11 +24,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - name: Format check (with diagnostic diff on failure)
-        run: |
-          npx prettier --write . || true
-          git diff --color=always -- README.md
-          npm run format:check
+      - run: npm run format:check
 
   test:
     name: Test on Node ${{ matrix.node }}
