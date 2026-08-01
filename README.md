@@ -187,4 +187,3 @@ has a thumbnail even if the flagged cover was deleted.
 changes, go live immediately and stay visible to students. Editing a
 _rejected_ listing is the one exception: that counts as a resubmission and
 returns it to `pending`.
-
