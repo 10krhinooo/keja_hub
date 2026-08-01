@@ -6,7 +6,9 @@ const { sendPasswordResetEmail } = require('../utils/mailer');
 // Emails are compared with `WHERE email = ?`, which is case-sensitive in SQLite.
 // Normalising on every read and write keeps Bob@x.com and bob@x.com one account.
 function normalizeEmail(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,19 +39,34 @@ const register = async (req, res) => {
     const email = normalizeEmail(req.body.email);
 
     if (!name || !email || !password || !role)
-      return res.render('auth/register', { error: 'Please fill in every field to create your account.', values });
+      return res.render('auth/register', {
+        error: 'Please fill in every field to create your account.',
+        values,
+      });
 
     if (!EMAIL_RE.test(email))
-      return res.render('auth/register', { error: 'That email address does not look valid. Please check it and try again.', values });
+      return res.render('auth/register', {
+        error: 'That email address does not look valid. Please check it and try again.',
+        values,
+      });
 
     if (password.length < 8)
-      return res.render('auth/register', { error: 'Your password must be at least 8 characters long.', values });
+      return res.render('auth/register', {
+        error: 'Your password must be at least 8 characters long.',
+        values,
+      });
 
     if (password !== confirm_password)
-      return res.render('auth/register', { error: 'The two passwords do not match. Please retype them.', values });
+      return res.render('auth/register', {
+        error: 'The two passwords do not match. Please retype them.',
+        values,
+      });
 
     if (!['student', 'landlord'].includes(role))
-      return res.render('auth/register', { error: 'Please choose whether you are a student or a landlord.', values });
+      return res.render('auth/register', {
+        error: 'Please choose whether you are a student or a landlord.',
+        values,
+      });
 
     const db = getDB();
 
@@ -57,15 +74,19 @@ const register = async (req, res) => {
     checkStmt.bind([email]);
     const exists = checkStmt.step();
     checkStmt.free();
-    if (exists) return res.render('auth/register', {
-      error: 'That email is already registered. Try logging in instead, or reset your password.', values
-    });
+    if (exists)
+      return res.render('auth/register', {
+        error: 'That email is already registered. Try logging in instead, or reset your password.',
+        values,
+      });
 
     const hashed = await bcrypt.hash(password, 10);
-    db.run(
-      `INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`,
-      [name.trim(), email, hashed, role]
-    );
+    db.run(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`, [
+      name.trim(),
+      email,
+      hashed,
+      role,
+    ]);
 
     const userStmt = db.prepare(`SELECT * FROM users WHERE email = ?`);
     userStmt.bind([email]);
@@ -74,9 +95,15 @@ const register = async (req, res) => {
     userStmt.free();
 
     if (role === 'student') {
-      db.run(`INSERT INTO student_profiles (user_id, phone) VALUES (?, ?)`, [user.id, req.body.phone || '']);
+      db.run(`INSERT INTO student_profiles (user_id, phone) VALUES (?, ?)`, [
+        user.id,
+        req.body.phone || '',
+      ]);
     } else if (role === 'landlord') {
-      db.run(`INSERT INTO landlord_profiles (user_id, phone) VALUES (?, ?)`, [user.id, req.body.phone || '']);
+      db.run(`INSERT INTO landlord_profiles (user_id, phone) VALUES (?, ?)`, [
+        user.id,
+        req.body.phone || '',
+      ]);
     }
 
     saveDB();
@@ -92,11 +119,11 @@ const register = async (req, res) => {
         res.render('auth/register', { error: 'Session error, please retry', values });
       }
     });
-
   } catch (err) {
     console.error('Register error:', err);
     res.render('auth/register', {
-      error: 'We could not create your account just now. Please try again in a moment.', values
+      error: 'We could not create your account just now. Please try again in a moment.',
+      values,
     });
   }
 };
@@ -119,18 +146,18 @@ const login = async (req, res) => {
 
     // Same message for unknown email and wrong password, so the form can't be
     // used to discover which addresses have accounts.
-    const badCredentials = 'Incorrect email or password. Check for typos, or use "Forgot password" to reset it.';
+    const badCredentials =
+      'Incorrect email or password. Check for typos, or use "Forgot password" to reset it.';
 
-    if (!user)
-      return res.render('auth/login', { error: badCredentials });
+    if (!user) return res.render('auth/login', { error: badCredentials });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
-      return res.render('auth/login', { error: badCredentials });
+    if (!match) return res.render('auth/login', { error: badCredentials });
 
     if (!user.is_active)
       return res.render('auth/login', {
-        error: 'This account has been deactivated. Contact support@kejahub.com if you think this is a mistake.'
+        error:
+          'This account has been deactivated. Contact support@kejahub.com if you think this is a mistake.',
       });
 
     req.session.regenerate((err) => {
@@ -145,10 +172,11 @@ const login = async (req, res) => {
         res.status(500).send('Something went wrong. Please try again.');
       }
     });
-
   } catch (err) {
     console.error('Login error:', err);
-    res.render('auth/login', { error: 'We could not sign you in just now. Please try again in a moment.' });
+    res.render('auth/login', {
+      error: 'We could not sign you in just now. Please try again in a moment.',
+    });
   }
 };
 
@@ -173,7 +201,9 @@ const forgotPassword = async (req, res) => {
   const email = normalizeEmail(req.body.email);
   if (!email) {
     return res.render('auth/forgot-password', {
-      error: 'Please enter the email address you signed up with.', resetLink: null, info: null
+      error: 'Please enter the email address you signed up with.',
+      resetLink: null,
+      info: null,
     });
   }
 
@@ -191,17 +221,23 @@ const forgotPassword = async (req, res) => {
 
     if (!user) {
       saveDB();
-      return res.render('auth/forgot-password', { error: null, resetLink: null, info: RESET_SENT_INFO });
+      return res.render('auth/forgot-password', {
+        error: null,
+        resetLink: null,
+        info: RESET_SENT_INFO,
+      });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 3600000; // 1 hour
 
     db.run(`DELETE FROM password_resets WHERE user_id = ?`, [user.id]);
-    db.run(
-      `INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`,
-      [crypto.randomUUID(), user.id, hashToken(token), expiresAt]
-    );
+    db.run(`INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`, [
+      crypto.randomUUID(),
+      user.id,
+      hashToken(token),
+      expiresAt,
+    ]);
     saveDB();
 
     // Never build the link from the Host header: an attacker who sets
@@ -218,7 +254,8 @@ const forgotPassword = async (req, res) => {
       console.error('Password reset email could not be sent: mailer not configured');
       return res.render('auth/forgot-password', {
         error: 'We could not send the reset email just now. Please try again in a few minutes.',
-        resetLink: null, info: null,
+        resetLink: null,
+        info: null,
       });
     }
 
@@ -226,14 +263,15 @@ const forgotPassword = async (req, res) => {
     // the page so the flow stays testable.
     res.render('auth/forgot-password', {
       error: null,
-      resetLink: (!isProduction && !result.delivered) ? `/reset-password?token=${token}` : null,
+      resetLink: !isProduction && !result.delivered ? `/reset-password?token=${token}` : null,
       info: RESET_SENT_INFO,
     });
   } catch (err) {
     console.error('Forgot password error:', err);
     res.render('auth/forgot-password', {
       error: 'We could not send the reset email just now. Please try again in a few minutes.',
-      resetLink: null, info: null
+      resetLink: null,
+      info: null,
     });
   }
 };
@@ -242,7 +280,9 @@ const showResetPassword = (req, res) => {
   const { token } = req.query;
   if (!token) {
     return res.render('auth/reset-password', {
-      error: 'No reset token provided.', valid: false, token: ''
+      error: 'No reset token provided.',
+      valid: false,
+      token: '',
     });
   }
 
@@ -255,8 +295,10 @@ const showResetPassword = (req, res) => {
 
   if (!reset || reset.expires_at < Date.now()) {
     return res.render('auth/reset-password', {
-      error: 'This reset link has expired or has already been used. Request a new one from the "Forgot password" page.',
-      valid: false, token: ''
+      error:
+        'This reset link has expired or has already been used. Request a new one from the "Forgot password" page.',
+      valid: false,
+      token: '',
     });
   }
 
@@ -278,20 +320,26 @@ const resetPassword = async (req, res) => {
 
     if (!reset || reset.expires_at < Date.now()) {
       return res.render('auth/reset-password', {
-        error: 'This reset link has expired or has already been used. Request a new one from the "Forgot password" page.',
-        valid: false, token: ''
+        error:
+          'This reset link has expired or has already been used. Request a new one from the "Forgot password" page.',
+        valid: false,
+        token: '',
       });
     }
 
     if (!new_password || new_password.length < 8) {
       return res.render('auth/reset-password', {
-        error: 'Your new password must be at least 8 characters long.', valid: true, token
+        error: 'Your new password must be at least 8 characters long.',
+        valid: true,
+        token,
       });
     }
 
     if (new_password !== confirm_password) {
       return res.render('auth/reset-password', {
-        error: 'The two passwords do not match. Please retype them.', valid: true, token
+        error: 'The two passwords do not match. Please retype them.',
+        valid: true,
+        token,
       });
     }
 
@@ -304,12 +352,22 @@ const resetPassword = async (req, res) => {
   } catch (err) {
     console.error('Reset password error:', err);
     res.render('auth/reset-password', {
-      error: 'We could not reset your password just now. Please try again in a moment.', valid: true, token
+      error: 'We could not reset your password just now. Please try again in a moment.',
+      valid: true,
+      token,
     });
   }
 };
 
 module.exports = {
-  showHome, showRegister, showLogin, register, login, logout,
-  showForgotPassword, forgotPassword, showResetPassword, resetPassword
+  showHome,
+  showRegister,
+  showLogin,
+  register,
+  login,
+  logout,
+  showForgotPassword,
+  forgotPassword,
+  showResetPassword,
+  resetPassword,
 };

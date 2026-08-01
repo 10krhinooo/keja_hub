@@ -11,10 +11,12 @@ const requireLogin = (req, res, next) => {
   next();
 };
 
-const requireRole = (...roles) => (req, res, next) => {
-  if (!req.session.user) return res.redirect('/login');
-  if (!roles.includes(req.session.user.role)) return res.redirect('/login');
-  requireLogin(req, res, next);
-};
+const requireRole =
+  (...roles) =>
+  (req, res, next) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (!roles.includes(req.session.user.role)) return res.redirect('/login');
+    requireLogin(req, res, next);
+  };
 
 module.exports = { requireLogin, requireRole };

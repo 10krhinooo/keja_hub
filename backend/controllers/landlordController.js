@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, rowsToObjects, getDistinctLocations } = require('../database');
+const { getDB, saveDB, getDistinctLocations } = require('../database');
 const { AMENITY_OPTIONS, validateHouseInput } = require('../utils/validateHouse');
 const {
   MAX_IMAGES_PER_HOUSE,
@@ -10,7 +10,6 @@ const {
   normalizePrimary,
   applyImageOrder,
   nextSortOrder,
-  countHouseImages,
 } = require('../utils/houseImages');
 
 // A listing always needs a cover image, even if the flagged primary was deleted,
@@ -22,7 +21,7 @@ const PRIMARY_IMAGE_SQL = `
 function parseIdList(value) {
   if (value === undefined || value === null) return [];
   const raw = Array.isArray(value) ? value : String(value).split(',');
-  return raw.map(v => parseInt(v, 10)).filter(v => !isNaN(v));
+  return raw.map((v) => parseInt(v, 10)).filter((v) => !isNaN(v));
 }
 
 const dashboard = (req, res) => {
@@ -65,7 +64,9 @@ const addHouse = (req, res) => {
     const { errors, values } = validateHouseInput(req.body);
 
     if (req.files && req.files.length > MAX_IMAGES_PER_HOUSE) {
-      errors.push(`You can upload up to ${MAX_IMAGES_PER_HOUSE} photos but you selected ${req.files.length}.`);
+      errors.push(
+        `You can upload up to ${MAX_IMAGES_PER_HOUSE} photos but you selected ${req.files.length}.`
+      );
     }
 
     if (errors.length) {
@@ -80,13 +81,21 @@ const addHouse = (req, res) => {
     db.run(
       `INSERT INTO houses (landlord_id, title, description, rent, location, estate, bedrooms, bathrooms)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.session.user.id, values.title, values.description, values.rent, values.location,
-       values.estate || null, values.bedrooms, values.bathrooms]
+      [
+        req.session.user.id,
+        values.title,
+        values.description,
+        values.rent,
+        values.location,
+        values.estate || null,
+        values.bedrooms,
+        values.bathrooms,
+      ]
     );
 
     const houseId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
 
-    values.amenities.forEach(name => {
+    values.amenities.forEach((name) => {
       db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
     });
 
@@ -103,7 +112,8 @@ const addHouse = (req, res) => {
     console.error('Add house error:', err);
     deleteUploadedFiles(req.files);
     renderAddHouse(res, {
-      error: 'We could not save your listing. Please try again. If it keeps happening, contact support.',
+      error:
+        'We could not save your listing. Please try again. If it keeps happening, contact support.',
       values: req.body,
     });
   }
@@ -150,10 +160,11 @@ const showHouse = (req, res) => {
 
 const updateBooking = (req, res) => {
   // Express 5 removed the 'back' magic string from res.redirect().
-  const goBack = (err) => res.redirect(
-    (req.get('Referer') || '/landlord/dashboard') +
-    (err ? (req.get('Referer') || '').includes('?') ? `&error=${err}` : `?error=${err}` : '')
-  );
+  const goBack = (err) =>
+    res.redirect(
+      (req.get('Referer') || '/landlord/dashboard') +
+        (err ? ((req.get('Referer') || '').includes('?') ? `&error=${err}` : `?error=${err}`) : '')
+    );
 
   try {
     const { status } = req.body;
@@ -164,7 +175,9 @@ const updateBooking = (req, res) => {
 
     const db = getDB();
 
-    const bStmt = db.prepare(`SELECT house_id FROM bookings WHERE id = ? AND house_id IN (SELECT id FROM houses WHERE landlord_id = ?)`);
+    const bStmt = db.prepare(
+      `SELECT house_id FROM bookings WHERE id = ? AND house_id IN (SELECT id FROM houses WHERE landlord_id = ?)`
+    );
     bStmt.bind([bookingId, req.session.user.id]);
     const found = bStmt.step();
     const { house_id } = found ? bStmt.getAsObject() : {};
@@ -243,8 +256,8 @@ const editHouse = (req, res) => {
     const { errors, values } = validateHouseInput(req.body);
 
     // Only ids that actually belong to this listing. Never trust the client's list.
-    const ownedIds = new Set(getHouseImages(db, houseId).map(img => img.id));
-    const toDelete = parseIdList(req.body.delete_images).filter(id => ownedIds.has(id));
+    const ownedIds = new Set(getHouseImages(db, houseId).map((img) => img.id));
+    const toDelete = parseIdList(req.body.delete_images).filter((id) => ownedIds.has(id));
     const newCount = (req.files || []).length;
     const finalCount = ownedIds.size - toDelete.length + newCount;
 
@@ -252,8 +265,8 @@ const editHouse = (req, res) => {
       const room = MAX_IMAGES_PER_HOUSE - (ownedIds.size - toDelete.length);
       errors.push(
         `A listing can have at most ${MAX_IMAGES_PER_HOUSE} photos. You have room for ` +
-        `${room === 1 ? '1 more photo' : `${room} more photos`} but added ${newCount}. ` +
-        `Remove some existing photos or upload fewer new ones.`
+          `${room === 1 ? '1 more photo' : `${room} more photos`} but added ${newCount}. ` +
+          `Remove some existing photos or upload fewer new ones.`
       );
     }
 
@@ -263,9 +276,12 @@ const editHouse = (req, res) => {
         error: errors.join(' '),
         amenities: values.amenities,
         values: {
-          title: req.body.title, description: req.body.description,
-          rent: req.body.rent, estate: req.body.estate,
-          bedrooms: values.bedrooms, bathrooms: values.bathrooms,
+          title: req.body.title,
+          description: req.body.description,
+          rent: req.body.rent,
+          estate: req.body.estate,
+          bedrooms: values.bedrooms,
+          bathrooms: values.bathrooms,
         },
       });
     }
@@ -277,12 +293,21 @@ const editHouse = (req, res) => {
     db.run(
       `UPDATE houses SET title=?, description=?, rent=?, location=?, estate=?, bedrooms=?, bathrooms=?,
        status=?, rejection_reason=NULL WHERE id=?`,
-      [values.title, values.description, values.rent, values.location, values.estate || null,
-       values.bedrooms, values.bathrooms, nextStatus, houseId]
+      [
+        values.title,
+        values.description,
+        values.rent,
+        values.location,
+        values.estate || null,
+        values.bedrooms,
+        values.bathrooms,
+        nextStatus,
+        houseId,
+      ]
     );
 
     db.run(`DELETE FROM amenities WHERE house_id = ?`, [houseId]);
-    values.amenities.forEach(name => {
+    values.amenities.forEach((name) => {
       db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
     });
 
@@ -296,26 +321,34 @@ const editHouse = (req, res) => {
       while (pathStmt.step()) removedPaths.push(pathStmt.getAsObject().image_path);
       pathStmt.free();
 
-      db.run(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`, [houseId, ...toDelete]);
+      db.run(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`, [
+        houseId,
+        ...toDelete,
+      ]);
       deleteImageFiles(removedPaths);
     }
 
     let order = nextSortOrder(db, houseId);
-    (req.files || []).forEach(file => {
+    (req.files || []).forEach((file) => {
       db.run(
         `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, 0, ?)`,
         [houseId, '/uploads/houses/' + file.filename, order++]
       );
     });
 
-    applyImageOrder(db, houseId, parseIdList(req.body.image_order).filter(id => !toDelete.includes(id)));
+    applyImageOrder(
+      db,
+      houseId,
+      parseIdList(req.body.image_order).filter((id) => !toDelete.includes(id))
+    );
     normalizePrimary(db, houseId, parseInt(req.body.primary_image, 10));
 
     saveDB();
 
-    const success = nextStatus === 'pending' && house.status === 'rejected'
-      ? 'listing_resubmitted'
-      : 'listing_updated';
+    const success =
+      nextStatus === 'pending' && house.status === 'rejected'
+        ? 'listing_resubmitted'
+        : 'listing_updated';
     res.redirect(`/landlord/house/${houseId}?success=${success}`);
   } catch (err) {
     console.error('Edit house error:', err);
@@ -346,7 +379,7 @@ const deleteHouse = (req, res) => {
     db.run(`DELETE FROM reports      WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM amenities    WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM houses       WHERE id = ?`,       [houseId]);
+    db.run(`DELETE FROM houses       WHERE id = ?`, [houseId]);
     saveDB();
 
     deleteImageFiles(imgPaths);
@@ -381,8 +414,11 @@ const updateProfile = (req, res) => {
       db.run(`UPDATE users SET name = ? WHERE id = ?`, [name.trim(), userId]);
       req.session.user = { ...req.session.user, name: name.trim() };
     }
-    db.run(`UPDATE landlord_profiles SET phone=?, id_number=? WHERE user_id=?`,
-      [phone || '', id_number || '', userId]);
+    db.run(`UPDATE landlord_profiles SET phone=?, id_number=? WHERE user_id=?`, [
+      phone || '',
+      id_number || '',
+      userId,
+    ]);
     saveDB();
     res.redirect('/landlord/profile?success=profile_updated');
   } catch (err) {
@@ -400,8 +436,10 @@ const changePassword = async (req, res) => {
       return res.redirect('/landlord/profile?error=password_too_short');
     const db = getDB();
     const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]); s.step();
-    const { password: hash } = s.getAsObject(); s.free();
+    s.bind([req.session.user.id]);
+    s.step();
+    const { password: hash } = s.getAsObject();
+    s.free();
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/landlord/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
@@ -414,4 +452,16 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { dashboard, showAddHouse, addHouse, showHouse, showEditHouse, editHouse, updateBooking, deleteHouse, showProfile, updateProfile, changePassword };
+module.exports = {
+  dashboard,
+  showAddHouse,
+  addHouse,
+  showHouse,
+  showEditHouse,
+  editHouse,
+  updateBooking,
+  deleteHouse,
+  showProfile,
+  updateProfile,
+  changePassword,
+};

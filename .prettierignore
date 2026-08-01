@@ -1,0 +1,10 @@
+node_modules
+coverage
+uploads
+.sessions
+package-lock.json
+*.db
+*.db.tmp
+
+# EJS templates are not JavaScript; prettier mangles the tag boundaries.
+frontend/views
