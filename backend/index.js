@@ -1,5 +1,5 @@
 const app = require('./app');
-const { initDB, saveDB } = require('./database');
+const { initDB, closeDB } = require('./database');
 
 const PORT = process.env.PORT || 3000;
 
@@ -9,16 +9,16 @@ initDB()
       console.log(`KejaHub running on http://localhost:${PORT}`);
     });
 
-    // Flush the in-memory database before exiting, so a deploy or restart doesn't
-    // discard writes made since the last periodic save.
+    // better-sqlite3 writes through to disk on every statement, so shutdown
+    // just needs to close the handle cleanly, not flush anything.
     const shutdown = (signal) => {
-      console.log(`\n${signal} received. Saving database and shutting down.`);
+      console.log(`\n${signal} received. Closing database and shutting down.`);
       server.close(() => {
-        saveDB();
+        closeDB();
         process.exit(0);
       });
       setTimeout(() => {
-        saveDB();
+        closeDB();
         process.exit(1);
       }, 8000).unref();
     };

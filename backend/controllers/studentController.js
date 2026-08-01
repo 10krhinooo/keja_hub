@@ -1,10 +1,12 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, rowsToObjects, getDistinctLocations } = require('../database');
+const { getDB, getDistinctLocations } = require('../database');
 
 const dashboard = (req, res) => {
   try {
     const db = getDB();
-    const result = db.exec(`
+    const houses = db
+      .prepare(
+        `
       SELECT h.*,
         (SELECT image_path FROM house_images WHERE house_id=h.id
            ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
@@ -14,8 +16,9 @@ const dashboard = (req, res) => {
       WHERE h.status='approved' AND h.is_available=1
       ORDER BY h.created_at DESC
       LIMIT 6
-    `);
-    const houses = rowsToObjects(result);
+    `
+      )
+      .all();
     res.render('student/dashboard', { houses, query: req.query });
   } catch (err) {
     console.error('Student dashboard error:', err);
@@ -102,17 +105,17 @@ const searchHouses = (req, res) => {
     const orderBy = SORT_MAP[sort] || SORT_MAP.newest;
     const whereClause = conditions.join(' AND ');
 
-    const countStmt = db.prepare(`SELECT COUNT(*) FROM houses h WHERE ${whereClause}`);
-    if (params.length) countStmt.bind(params);
-    countStmt.step();
-    const totalCount = countStmt.getAsObject()['COUNT(*)'] || 0;
-    countStmt.free();
+    const { total: totalCount } = db
+      .prepare(`SELECT COUNT(*) as total FROM houses h WHERE ${whereClause}`)
+      .get(...params);
 
     const totalPages = Math.max(1, Math.ceil(totalCount / SEARCH_PER_PAGE));
     const safePage = Math.min(page, totalPages);
     const offset = (safePage - 1) * SEARCH_PER_PAGE;
 
-    const stmt = db.prepare(`
+    const houses = db
+      .prepare(
+        `
       SELECT h.*,
         (SELECT image_path FROM house_images WHERE house_id=h.id
            ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
@@ -122,11 +125,9 @@ const searchHouses = (req, res) => {
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
-    `);
-    stmt.bind([...params, SEARCH_PER_PAGE, offset]);
-    const houses = [];
-    while (stmt.step()) houses.push(stmt.getAsObject());
-    stmt.free();
+    `
+      )
+      .all(...params, SEARCH_PER_PAGE, offset);
 
     const locations = getDistinctLocations();
 
@@ -153,67 +154,56 @@ const viewHouse = (req, res) => {
 
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT * FROM houses WHERE id = ? AND status = 'approved'`);
-    houseStmt.bind([houseId]);
-    const house = houseStmt.step() ? houseStmt.getAsObject() : null;
-    houseStmt.free();
+    const house = db
+      .prepare(`SELECT * FROM houses WHERE id = ? AND status = 'approved'`)
+      .get(houseId);
     if (!house) return res.redirect('/student/search');
 
-    const imgStmt = db.prepare(
-      `SELECT * FROM house_images WHERE house_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC`
-    );
-    imgStmt.bind([houseId]);
-    const images = [];
-    while (imgStmt.step()) images.push(imgStmt.getAsObject());
-    imgStmt.free();
+    const images = db
+      .prepare(
+        `SELECT * FROM house_images WHERE house_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC`
+      )
+      .all(houseId);
 
-    const amenStmt = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`);
-    amenStmt.bind([houseId]);
-    const amenities = [];
-    while (amenStmt.step()) amenities.push(amenStmt.getAsObject());
-    amenStmt.free();
+    const amenities = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`).all(houseId);
 
-    const reviewStmt = db.prepare(`
+    const reviews = db
+      .prepare(
+        `
       SELECT r.*, u.name as student_name
       FROM reviews r JOIN users u ON r.student_id = u.id
       WHERE r.house_id = ?
       ORDER BY r.created_at DESC
-    `);
-    reviewStmt.bind([houseId]);
-    const reviews = [];
-    while (reviewStmt.step()) reviews.push(reviewStmt.getAsObject());
-    reviewStmt.free();
+    `
+      )
+      .all(houseId);
 
-    const avgStmt = db.prepare(`SELECT AVG(rating) as avg FROM reviews WHERE house_id = ?`);
-    avgStmt.bind([houseId]);
-    avgStmt.step();
-    const avgRaw = avgStmt.getAsObject().avg;
-    avgStmt.free();
+    const { avg: avgRaw } = db
+      .prepare(`SELECT AVG(rating) as avg FROM reviews WHERE house_id = ?`)
+      .get(houseId);
     const avgRating = avgRaw ? Number(avgRaw).toFixed(1) : null;
 
-    const landlordStmt = db.prepare(`
+    const landlord =
+      db
+        .prepare(
+          `
       SELECT u.name, lp.phone
       FROM users u
       LEFT JOIN landlord_profiles lp ON u.id = lp.user_id
       WHERE u.id = ?
-    `);
-    landlordStmt.bind([house.landlord_id]);
-    const landlord = landlordStmt.step() ? landlordStmt.getAsObject() : {};
-    landlordStmt.free();
+    `
+        )
+        .get(house.landlord_id) || {};
 
-    const bookingStmt = db.prepare(`
-      SELECT * FROM bookings WHERE house_id = ? AND student_id = ? ORDER BY created_at DESC LIMIT 1
-    `);
-    bookingStmt.bind([houseId, req.session.user.id]);
-    const existingBooking = bookingStmt.step() ? bookingStmt.getAsObject() : null;
-    bookingStmt.free();
+    const existingBooking = db
+      .prepare(
+        `SELECT * FROM bookings WHERE house_id = ? AND student_id = ? ORDER BY created_at DESC LIMIT 1`
+      )
+      .get(houseId, req.session.user.id);
 
-    const reviewCheckStmt = db.prepare(`
-      SELECT * FROM reviews WHERE house_id = ? AND student_id = ? LIMIT 1
-    `);
-    reviewCheckStmt.bind([houseId, req.session.user.id]);
-    const existingReview = reviewCheckStmt.step() ? reviewCheckStmt.getAsObject() : null;
-    reviewCheckStmt.free();
+    const existingReview = db
+      .prepare(`SELECT * FROM reviews WHERE house_id = ? AND student_id = ? LIMIT 1`)
+      .get(houseId, req.session.user.id);
 
     res.render('student/house-detail', {
       house,
@@ -222,8 +212,8 @@ const viewHouse = (req, res) => {
       reviews,
       avgRating,
       landlord,
-      existingBooking,
-      existingReview,
+      existingBooking: existingBooking || null,
+      existingReview: existingReview || null,
       query: req.query,
     });
   } catch (err) {
@@ -240,28 +230,22 @@ const sendBooking = (req, res) => {
 
     const db = getDB();
 
-    const houseStmt = db.prepare(
-      `SELECT id FROM houses WHERE id = ? AND status = 'approved' AND is_available = 1`
-    );
-    houseStmt.bind([houseId]);
-    const houseExists = houseStmt.step();
-    houseStmt.free();
+    const houseExists = db
+      .prepare(`SELECT id FROM houses WHERE id = ? AND status = 'approved' AND is_available = 1`)
+      .get(houseId);
     if (!houseExists) return res.redirect('/student/dashboard');
 
-    const existStmt = db.prepare(`
-      SELECT id FROM bookings WHERE house_id = ? AND student_id = ? AND status = 'pending'
-    `);
-    existStmt.bind([houseId, req.session.user.id]);
-    const alreadyPending = existStmt.step();
-    existStmt.free();
+    const alreadyPending = db
+      .prepare(
+        `SELECT id FROM bookings WHERE house_id = ? AND student_id = ? AND status = 'pending'`
+      )
+      .get(houseId, req.session.user.id);
     if (alreadyPending) return res.redirect(`/student/house/${houseId}?error=already_requested`);
 
     const bookingType = ['viewing', 'booking'].includes(type) ? type : 'viewing';
-    db.run(
-      `INSERT INTO bookings (house_id, student_id, type, message, visit_date) VALUES (?, ?, ?, ?, ?)`,
-      [houseId, req.session.user.id, bookingType, message || null, visit_date || null]
-    );
-    saveDB();
+    db.prepare(
+      `INSERT INTO bookings (house_id, student_id, type, message, visit_date) VALUES (?, ?, ?, ?, ?)`
+    ).run(houseId, req.session.user.id, bookingType, message || null, visit_date || null);
     res.redirect(`/student/house/${houseId}?success=booking_sent`);
   } catch (err) {
     console.error('Send booking error:', err);
@@ -272,18 +256,18 @@ const sendBooking = (req, res) => {
 const myBookings = (req, res) => {
   try {
     const db = getDB();
-    const stmt = db.prepare(`
+    const bookings = db
+      .prepare(
+        `
       SELECT b.*, h.title as house_title, h.location, h.rent,
         (SELECT image_path FROM house_images WHERE house_id=h.id
            ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image
       FROM bookings b JOIN houses h ON b.house_id = h.id
       WHERE b.student_id = ?
       ORDER BY b.created_at DESC
-    `);
-    stmt.bind([req.session.user.id]);
-    const bookings = [];
-    while (stmt.step()) bookings.push(stmt.getAsObject());
-    stmt.free();
+    `
+      )
+      .all(req.session.user.id);
     res.render('student/bookings', { bookings });
   } catch (err) {
     console.error('My bookings error:', err);
@@ -302,25 +286,19 @@ const addReview = (req, res) => {
 
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT id FROM houses WHERE id = ? AND status = 'approved'`);
-    houseStmt.bind([houseId]);
-    const houseExists = houseStmt.step();
-    houseStmt.free();
+    const houseExists = db
+      .prepare(`SELECT id FROM houses WHERE id = ? AND status = 'approved'`)
+      .get(houseId);
     if (!houseExists) return res.redirect('/student/dashboard');
 
-    const existStmt = db.prepare(`SELECT id FROM reviews WHERE house_id = ? AND student_id = ?`);
-    existStmt.bind([houseId, req.session.user.id]);
-    const alreadyReviewed = existStmt.step();
-    existStmt.free();
+    const alreadyReviewed = db
+      .prepare(`SELECT id FROM reviews WHERE house_id = ? AND student_id = ?`)
+      .get(houseId, req.session.user.id);
     if (alreadyReviewed) return res.redirect(`/student/house/${houseId}?error=already_reviewed`);
 
-    db.run(`INSERT INTO reviews (house_id, student_id, rating, comment) VALUES (?, ?, ?, ?)`, [
-      houseId,
-      req.session.user.id,
-      ratingNum,
-      comment || null,
-    ]);
-    saveDB();
+    db.prepare(
+      `INSERT INTO reviews (house_id, student_id, rating, comment) VALUES (?, ?, ?, ?)`
+    ).run(houseId, req.session.user.id, ratingNum, comment || null);
     res.redirect(`/student/house/${houseId}?success=review_posted`);
   } catch (err) {
     console.error('Add review error:', err);
@@ -336,12 +314,11 @@ const reportHouse = (req, res) => {
       return res.redirect(`/student/house/${houseId || ''}?error=invalid_report`);
 
     const db = getDB();
-    db.run(`INSERT INTO reports (house_id, reported_by, reason) VALUES (?, ?, ?)`, [
+    db.prepare(`INSERT INTO reports (house_id, reported_by, reason) VALUES (?, ?, ?)`).run(
       houseId,
       req.session.user.id,
-      reason.trim(),
-    ]);
-    saveDB();
+      reason.trim()
+    );
     res.redirect(`/student/house/${houseId}?success=report_filed`);
   } catch (err) {
     console.error('Report house error:', err);
@@ -353,10 +330,8 @@ const showProfile = (req, res) => {
   try {
     const db = getDB();
     const userId = req.session.user.id;
-    const profStmt = db.prepare(`SELECT * FROM student_profiles WHERE user_id = ?`);
-    profStmt.bind([userId]);
-    const profile = profStmt.step() ? profStmt.getAsObject() : {};
-    profStmt.free();
+    const profile =
+      db.prepare(`SELECT * FROM student_profiles WHERE user_id = ?`).get(userId) || {};
     res.render('student/profile', { profile, query: req.query });
   } catch (err) {
     console.error('Student profile error:', err);
@@ -370,16 +345,15 @@ const updateProfile = (req, res) => {
     const userId = req.session.user.id;
     const { name, phone, university, course } = req.body;
     if (name && name.trim()) {
-      db.run(`UPDATE users SET name = ? WHERE id = ?`, [name.trim(), userId]);
+      db.prepare(`UPDATE users SET name = ? WHERE id = ?`).run(name.trim(), userId);
       req.session.user = { ...req.session.user, name: name.trim() };
     }
-    db.run(`UPDATE student_profiles SET phone=?, university=?, course=? WHERE user_id=?`, [
+    db.prepare(`UPDATE student_profiles SET phone=?, university=?, course=? WHERE user_id=?`).run(
       phone || '',
       university || '',
       course || '',
-      userId,
-    ]);
-    saveDB();
+      userId
+    );
     res.redirect('/student/profile?success=profile_updated');
   } catch (err) {
     console.error('Update student profile error:', err);
@@ -395,16 +369,13 @@ const changePassword = async (req, res) => {
     if (!new_password || new_password.length < 8)
       return res.redirect('/student/profile?error=password_too_short');
     const db = getDB();
-    const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]);
-    s.step();
-    const { password: hash } = s.getAsObject();
-    s.free();
+    const { password: hash } = db
+      .prepare(`SELECT password FROM users WHERE id = ?`)
+      .get(req.session.user.id);
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/student/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
-    db.run(`UPDATE users SET password = ? WHERE id = ?`, [newHash, req.session.user.id]);
-    saveDB();
+    db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/student/profile?success=password_changed');
   } catch (err) {
     console.error('Change password error:', err);

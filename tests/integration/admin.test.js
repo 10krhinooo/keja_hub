@@ -11,27 +11,22 @@ const OTHER_PASSWORD = newPassword();
 describe('admin', () => {
   let app, db, cleanup;
 
-  const one = (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    if (params.length) stmt.bind(params);
-    const row = stmt.step() ? stmt.getAsObject() : null;
-    stmt.free();
-    return row;
-  };
+  const one = (sql, params = []) => db.prepare(sql).get(...params) ?? null;
 
   const newHouse = (status = 'pending') => {
-    db.run(
-      `INSERT INTO houses (landlord_id,title,description,rent,location,status)
-            VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,?)`,
-      [
+    const { lastInsertRowid } = db
+      .prepare(
+        `INSERT INTO houses (landlord_id,title,description,rent,location,status)
+            VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,?)`
+      )
+      .run(
         'Admin fixture ' + Math.random(),
         'A description long enough to pass validation.',
         9000,
         'Ngong Road',
-        status,
-      ]
-    );
-    return db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+        status
+      );
+    return lastInsertRowid;
   };
 
   before(async () => {
@@ -142,7 +137,7 @@ describe('admin', () => {
     test('approving clears an earlier rejection reason', async () => {
       const admin = await loginAs(app, 'admin');
       const id = newHouse('rejected');
-      db.run(`UPDATE houses SET rejection_reason='Blurry photos' WHERE id=?`, [id]);
+      db.prepare(`UPDATE houses SET rejection_reason='Blurry photos' WHERE id=?`).run(id);
       await admin.post(`/admin/house/${id}/approve`, {}, '/admin/listings');
       assert.equal(
         one(`SELECT rejection_reason FROM houses WHERE id=?`, [id]).rejection_reason,
@@ -216,11 +211,10 @@ describe('admin', () => {
     test('deletes a listing and its dependent rows', async () => {
       const admin = await loginAs(app, 'admin');
       const id = newHouse('approved');
-      db.run(
-        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`,
-        [id, '/uploads/houses/admin-doomed.jpg']
-      );
-      db.run(`INSERT INTO amenities (house_id,name) VALUES (?,'WiFi')`, [id]);
+      db.prepare(
+        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`
+      ).run(id, '/uploads/houses/admin-doomed.jpg');
+      db.prepare(`INSERT INTO amenities (house_id,name) VALUES (?,'WiFi')`).run(id);
 
       const res = await admin.post(`/admin/house/${id}/delete`, {}, '/admin/listings');
       assert.match(res.headers.location, /success=listing_deleted/);
@@ -291,11 +285,15 @@ describe('admin', () => {
 
   describe('reports', () => {
     const newReport = () => {
-      db.run(`INSERT INTO reports (house_id, reported_by, reason)
+      const { lastInsertRowid } = db
+        .prepare(
+          `INSERT INTO reports (house_id, reported_by, reason)
               VALUES ((SELECT id FROM houses LIMIT 1),
                       (SELECT id FROM users WHERE email='brian@student.com'),
-                      'Listing looks like a scam')`);
-      return db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+                      'Listing looks like a scam')`
+        )
+        .run();
+      return lastInsertRowid;
     };
 
     for (const status of ['open', 'resolved']) {

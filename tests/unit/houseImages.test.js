@@ -33,7 +33,7 @@ describe('houseImages', () => {
     db = await memoryDb();
   });
   beforeEach(() => {
-    db.run('DELETE FROM house_images');
+    db.exec('DELETE FROM house_images');
   });
 
   test('caps galleries at ten images', () => {

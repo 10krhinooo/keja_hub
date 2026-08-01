@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, rowsToObjects } = require('../database');
+const { getDB } = require('../database');
 const { deleteImageFiles, getHouseImagePaths, getHouseImages } = require('../utils/houseImages');
 
 const PER_PAGE = 15;
@@ -20,11 +20,11 @@ const dashboard = (req, res) => {
   try {
     const db = getDB();
 
-    const v = (r) => (r && r[0] ? r[0].values[0][0] : 0);
+    const count = (sql) => db.prepare(sql).get()['COUNT(*)'] || 0;
 
-    const statusRows = rowsToObjects(
-      db.exec(`SELECT status, COUNT(*) as count FROM houses GROUP BY status`)
-    );
+    const statusRows = db
+      .prepare(`SELECT status, COUNT(*) as count FROM houses GROUP BY status`)
+      .all();
     const listingsByStatus = { approved: 0, pending: 0, rejected: 0 };
     statusRows.forEach((r) => {
       if (Object.prototype.hasOwnProperty.call(listingsByStatus, r.status))
@@ -32,16 +32,17 @@ const dashboard = (req, res) => {
     });
 
     const stats = {
-      students: v(db.exec(`SELECT COUNT(*) FROM users WHERE role='student'`)),
-      landlords: v(db.exec(`SELECT COUNT(*) FROM users WHERE role='landlord'`)),
-      totalHouses: v(db.exec(`SELECT COUNT(*) FROM houses`)),
+      students: count(`SELECT COUNT(*) FROM users WHERE role='student'`),
+      landlords: count(`SELECT COUNT(*) FROM users WHERE role='landlord'`),
+      totalHouses: count(`SELECT COUNT(*) FROM houses`),
       pending: listingsByStatus.pending,
-      activeBookings: v(db.exec(`SELECT COUNT(*) FROM bookings WHERE status='pending'`)),
-      openReports: v(db.exec(`SELECT COUNT(*) FROM reports WHERE status='open'`)),
+      activeBookings: count(`SELECT COUNT(*) FROM bookings WHERE status='pending'`),
+      openReports: count(`SELECT COUNT(*) FROM reports WHERE status='open'`),
     };
 
-    const topHouses = rowsToObjects(
-      db.exec(`
+    const topHouses = db
+      .prepare(
+        `
       SELECT h.id, h.title, h.location,
         ROUND(AVG(rv.rating), 1) as avg_rating,
         COUNT(rv.id) as review_count,
@@ -53,20 +54,22 @@ const dashboard = (req, res) => {
       GROUP BY h.id
       ORDER BY avg_rating DESC, review_count DESC
       LIMIT 5
-    `)
-    );
+    `
+      )
+      .all();
 
-    const bookingStatusRows = rowsToObjects(
-      db.exec(`SELECT status, COUNT(*) as count FROM bookings GROUP BY status`)
-    );
+    const bookingStatusRows = db
+      .prepare(`SELECT status, COUNT(*) as count FROM bookings GROUP BY status`)
+      .all();
     const bookingsByStatus = { pending: 0, accepted: 0, declined: 0 };
     bookingStatusRows.forEach((r) => {
       if (Object.prototype.hasOwnProperty.call(bookingsByStatus, r.status))
         bookingsByStatus[r.status] = r.count;
     });
 
-    const activityFeed = rowsToObjects(
-      db.exec(`
+    const activityFeed = db
+      .prepare(
+        `
       SELECT 'booking' as event_type, b.created_at as ts,
         u.name as actor, (b.type || ' request') as action, h.title as house_title
       FROM bookings b JOIN houses h ON b.house_id=h.id JOIN users u ON b.student_id=u.id
@@ -74,8 +77,9 @@ const dashboard = (req, res) => {
       SELECT 'report', r.created_at, u.name, 'report filed', h.title
       FROM reports r JOIN houses h ON r.house_id=h.id JOIN users u ON r.reported_by=u.id
       ORDER BY ts DESC LIMIT 10
-    `)
-    );
+    `
+      )
+      .all();
 
     res.render('admin/dashboard', {
       stats,
@@ -111,28 +115,27 @@ const adminListings = (req, res) => {
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const countStmt = db.prepare(
-      `SELECT COUNT(*) FROM houses h JOIN users u ON h.landlord_id = u.id ${whereClause}`
-    );
-    if (params.length) countStmt.bind(params);
-    countStmt.step();
-    const totalCount = countStmt.getAsObject()['COUNT(*)'] || 0;
-    countStmt.free();
+    const totalCount =
+      db
+        .prepare(
+          `SELECT COUNT(*) FROM houses h JOIN users u ON h.landlord_id = u.id ${whereClause}`
+        )
+        .get(...params)['COUNT(*)'] || 0;
     const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
     const safePage = Math.min(page, totalPages);
     const offset = (safePage - 1) * PER_PAGE;
 
-    const listingStmt = db.prepare(`
+    const listings = db
+      .prepare(
+        `
       SELECT h.*, u.name as landlord_name, u.email as landlord_email
       FROM houses h JOIN users u ON h.landlord_id = u.id
       ${whereClause}
       ORDER BY h.created_at DESC
       LIMIT ? OFFSET ?
-    `);
-    listingStmt.bind([...params, PER_PAGE, offset]);
-    const listings = [];
-    while (listingStmt.step()) listings.push(listingStmt.getAsObject());
-    listingStmt.free();
+    `
+      )
+      .all(...params, PER_PAGE, offset);
 
     res.render('admin/listings', {
       listings,
@@ -153,26 +156,30 @@ const analytics = (req, res) => {
   try {
     const db = getDB();
 
-    const listingsPerMonth = rowsToObjects(
-      db.exec(`
+    const listingsPerMonth = db
+      .prepare(
+        `
       SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as count
       FROM houses
       WHERE created_at >= date('now', '-6 months')
       GROUP BY month ORDER BY month ASC
-    `)
-    );
+    `
+      )
+      .all();
 
-    const reviewsByRating = rowsToObjects(
-      db.exec(`SELECT rating, COUNT(*) as count FROM reviews GROUP BY rating ORDER BY rating ASC`)
-    );
+    const reviewsByRating = db
+      .prepare(`SELECT rating, COUNT(*) as count FROM reviews GROUP BY rating ORDER BY rating ASC`)
+      .all();
 
-    const topLocations = rowsToObjects(
-      db.exec(`
+    const topLocations = db
+      .prepare(
+        `
       SELECT location, COUNT(*) as count FROM houses
       WHERE status='approved'
       GROUP BY location ORDER BY count DESC LIMIT 8
-    `)
-    );
+    `
+      )
+      .all();
 
     res.render('admin/analytics', { listingsPerMonth, reviewsByRating, topLocations });
   } catch (err) {
@@ -187,49 +194,40 @@ const viewHouse = (req, res) => {
     if (isNaN(houseId)) return res.redirect('/admin/dashboard');
     const db = getDB();
 
-    const houseStmt = db.prepare(
-      `SELECT h.*, u.name as landlord_name, u.email as landlord_email, lp.phone as landlord_phone FROM houses h JOIN users u ON h.landlord_id = u.id LEFT JOIN landlord_profiles lp ON u.id = lp.user_id WHERE h.id = ?`
-    );
-    houseStmt.bind([houseId]);
-    const house = houseStmt.step() ? houseStmt.getAsObject() : null;
-    houseStmt.free();
+    const house = db
+      .prepare(
+        `SELECT h.*, u.name as landlord_name, u.email as landlord_email, lp.phone as landlord_phone FROM houses h JOIN users u ON h.landlord_id = u.id LEFT JOIN landlord_profiles lp ON u.id = lp.user_id WHERE h.id = ?`
+      )
+      .get(houseId);
     if (!house) return res.redirect('/admin/dashboard');
 
     const images = getHouseImages(db, houseId);
 
-    const amenStmt = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`);
-    amenStmt.bind([houseId]);
-    const amenities = [];
-    while (amenStmt.step()) amenities.push(amenStmt.getAsObject());
-    amenStmt.free();
+    const amenities = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`).all(houseId);
 
-    const bookStmt = db.prepare(`
+    const bookings = db
+      .prepare(
+        `
       SELECT b.*, u.name as student_name, u.email as student_email
       FROM bookings b JOIN users u ON b.student_id = u.id
       WHERE b.house_id = ? ORDER BY b.created_at DESC
-    `);
-    bookStmt.bind([houseId]);
-    const bookings = [];
-    while (bookStmt.step()) bookings.push(bookStmt.getAsObject());
-    bookStmt.free();
+    `
+      )
+      .all(houseId);
 
-    const reviewStmt = db.prepare(`
+    const reviews = db
+      .prepare(
+        `
       SELECT r.*, u.name as student_name
       FROM reviews r JOIN users u ON r.student_id = u.id
       WHERE r.house_id = ? ORDER BY r.created_at DESC
-    `);
-    reviewStmt.bind([houseId]);
-    const reviews = [];
-    while (reviewStmt.step()) reviews.push(reviewStmt.getAsObject());
-    reviewStmt.free();
+    `
+      )
+      .all(houseId);
 
-    const avgStmt = db.prepare(
-      `SELECT ROUND(AVG(rating),1) as avg FROM reviews WHERE house_id = ?`
-    );
-    avgStmt.bind([houseId]);
-    avgStmt.step();
-    const avgRating = avgStmt.getAsObject().avg || null;
-    avgStmt.free();
+    const { avg: avgRating } = db
+      .prepare(`SELECT ROUND(AVG(rating),1) as avg FROM reviews WHERE house_id = ?`)
+      .get(houseId);
 
     res.render('admin/house-detail', {
       house,
@@ -237,7 +235,7 @@ const viewHouse = (req, res) => {
       amenities,
       bookings,
       reviews,
-      avgRating,
+      avgRating: avgRating || null,
       query: req.query,
     });
   } catch (err) {
@@ -251,8 +249,9 @@ const approveHouse = (req, res) => {
     const houseId = parseInt(req.params.id, 10);
     if (isNaN(houseId)) return res.redirect('/admin/dashboard');
     const db = getDB();
-    db.run(`UPDATE houses SET status='approved', rejection_reason=NULL WHERE id=?`, [houseId]);
-    saveDB();
+    db.prepare(`UPDATE houses SET status='approved', rejection_reason=NULL WHERE id=?`).run(
+      houseId
+    );
     redirectAfterHouseAction(req, res, houseId, 'listing_approved');
   } catch (err) {
     console.error('Approve house error:', err);
@@ -266,8 +265,10 @@ const rejectHouse = (req, res) => {
     if (isNaN(houseId)) return res.redirect('/admin/dashboard');
     const reason = (req.body.rejection_reason || '').trim().slice(0, 500) || null;
     const db = getDB();
-    db.run(`UPDATE houses SET status='rejected', rejection_reason=? WHERE id=?`, [reason, houseId]);
-    saveDB();
+    db.prepare(`UPDATE houses SET status='rejected', rejection_reason=? WHERE id=?`).run(
+      reason,
+      houseId
+    );
     redirectAfterHouseAction(req, res, houseId, 'listing_rejected');
   } catch (err) {
     console.error('Reject house error:', err);
@@ -282,13 +283,17 @@ const deleteHouse = (req, res) => {
     const db = getDB();
     // Collect file paths before the rows go, so the images don't outlive the listing.
     const imgPaths = getHouseImagePaths(db, houseId);
-    db.run(`DELETE FROM amenities   WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM bookings    WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM reviews     WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM reports     WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM houses      WHERE id = ?`, [houseId]);
-    saveDB();
+
+    const deleteAll = db.transaction(() => {
+      db.prepare(`DELETE FROM amenities   WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM house_images WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM bookings    WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM reviews     WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM reports     WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM houses      WHERE id = ?`).run(houseId);
+    });
+    deleteAll();
+
     deleteImageFiles(imgPaths);
     res.redirect('/admin/listings?success=listing_deleted');
   } catch (err) {
@@ -310,14 +315,9 @@ const manageUsers = (req, res) => {
         const kw = `%${keyword}%`;
         params.push(kw, kw);
       }
-      const stmt = db.prepare(
-        `SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`
-      );
-      stmt.bind(params);
-      const rows = [];
-      while (stmt.step()) rows.push(stmt.getAsObject());
-      stmt.free();
-      return rows;
+      return db
+        .prepare(`SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`)
+        .all(...params);
     };
 
     const students = buildQuery('student');
@@ -335,16 +335,9 @@ const toggleUser = (req, res) => {
     const userId = parseInt(req.params.id, 10);
     if (isNaN(userId)) return res.redirect('/admin/users');
     const db = getDB();
-    const stmt = db.prepare(`SELECT is_active FROM users WHERE id = ?`);
-    stmt.bind([userId]);
-    if (!stmt.step()) {
-      stmt.free();
-      return res.redirect('/admin/users');
-    }
-    const { is_active } = stmt.getAsObject();
-    stmt.free();
-    db.run(`UPDATE users SET is_active = ? WHERE id = ?`, [is_active ? 0 : 1, userId]);
-    saveDB();
+    const user = db.prepare(`SELECT is_active FROM users WHERE id = ?`).get(userId);
+    if (!user) return res.redirect('/admin/users');
+    db.prepare(`UPDATE users SET is_active = ? WHERE id = ?`).run(user.is_active ? 0 : 1, userId);
     res.redirect('/admin/users');
   } catch (err) {
     console.error('Toggle user error:', err);
@@ -363,18 +356,18 @@ const manageReports = (req, res) => {
       params.push(status);
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const stmt = db.prepare(`
+    const reports = db
+      .prepare(
+        `
       SELECT r.*, h.title as house_title, u.name as reported_by_name
       FROM reports r
       JOIN houses h ON r.house_id = h.id
       JOIN users u ON r.reported_by = u.id
       ${whereClause}
       ORDER BY r.created_at DESC
-    `);
-    if (params.length) stmt.bind(params);
-    const reports = [];
-    while (stmt.step()) reports.push(stmt.getAsObject());
-    stmt.free();
+    `
+      )
+      .all(...params);
     res.render('admin/reports', { reports, status, query: req.query });
   } catch (err) {
     console.error('Manage reports error:', err);
@@ -387,8 +380,7 @@ const resolveReport = (req, res) => {
     const reportId = parseInt(req.params.id, 10);
     if (isNaN(reportId)) return res.redirect('/admin/reports');
     const db = getDB();
-    db.run(`UPDATE reports SET status='resolved' WHERE id=?`, [reportId]);
-    saveDB();
+    db.prepare(`UPDATE reports SET status='resolved' WHERE id=?`).run(reportId);
     res.redirect('/admin/reports?success=report_resolved');
   } catch (err) {
     console.error('Resolve report error:', err);
@@ -410,16 +402,15 @@ const allBookings = (req, res) => {
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const countStmt = db.prepare(`SELECT COUNT(*) FROM bookings b ${whereClause}`);
-    if (params.length) countStmt.bind(params);
-    countStmt.step();
-    const totalCount = countStmt.getAsObject()['COUNT(*)'] || 0;
-    countStmt.free();
+    const totalCount =
+      db.prepare(`SELECT COUNT(*) FROM bookings b ${whereClause}`).get(...params)['COUNT(*)'] || 0;
     const totalPages = Math.max(1, Math.ceil(totalCount / perPg));
     const safePage = Math.min(page, totalPages);
     const offset = (safePage - 1) * perPg;
 
-    const stmt = db.prepare(`
+    const bookings = db
+      .prepare(
+        `
       SELECT b.*, h.title as house_title, h.location,
         u.name as student_name, u.email as student_email,
         ll.name as landlord_name
@@ -430,11 +421,9 @@ const allBookings = (req, res) => {
       ${whereClause}
       ORDER BY b.created_at DESC
       LIMIT ? OFFSET ?
-    `);
-    stmt.bind([...params, perPg, offset]);
-    const bookings = [];
-    while (stmt.step()) bookings.push(stmt.getAsObject());
-    stmt.free();
+    `
+      )
+      .all(...params, perPg, offset);
 
     res.render('admin/bookings', {
       bookings,
@@ -459,9 +448,8 @@ const updateProfile = (req, res) => {
     const db = getDB();
     const { name } = req.body;
     if (name && name.trim()) {
-      db.run(`UPDATE users SET name = ? WHERE id = ?`, [name.trim(), req.session.user.id]);
+      db.prepare(`UPDATE users SET name = ? WHERE id = ?`).run(name.trim(), req.session.user.id);
       req.session.user = { ...req.session.user, name: name.trim() };
-      saveDB();
     }
     res.redirect('/admin/profile?success=profile_updated');
   } catch (err) {
@@ -478,16 +466,13 @@ const changePassword = async (req, res) => {
     if (!new_password || new_password.length < 8)
       return res.redirect('/admin/profile?error=password_too_short');
     const db = getDB();
-    const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]);
-    s.step();
-    const { password: hash } = s.getAsObject();
-    s.free();
+    const { password: hash } = db
+      .prepare(`SELECT password FROM users WHERE id = ?`)
+      .get(req.session.user.id);
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/admin/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
-    db.run(`UPDATE users SET password = ? WHERE id = ?`, [newHash, req.session.user.id]);
-    saveDB();
+    db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/admin/profile?success=password_changed');
   } catch (err) {
     console.error('Change admin password error:', err);

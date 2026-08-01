@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, getDistinctLocations } = require('../database');
+const { getDB, getDistinctLocations } = require('../database');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 
 // Emails are compared with `WHERE email = ?`, which is case-sensitive in SQLite.
@@ -70,10 +70,7 @@ const register = async (req, res) => {
 
     const db = getDB();
 
-    const checkStmt = db.prepare(`SELECT id FROM users WHERE email = ?`);
-    checkStmt.bind([email]);
-    const exists = checkStmt.step();
-    checkStmt.free();
+    const exists = db.prepare(`SELECT id FROM users WHERE email = ?`).get(email);
     if (exists)
       return res.render('auth/register', {
         error: 'That email is already registered. Try logging in instead, or reset your password.',
@@ -81,32 +78,22 @@ const register = async (req, res) => {
       });
 
     const hashed = await bcrypt.hash(password, 10);
-    db.run(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`, [
-      name.trim(),
-      email,
-      hashed,
-      role,
-    ]);
-
-    const userStmt = db.prepare(`SELECT * FROM users WHERE email = ?`);
-    userStmt.bind([email]);
-    userStmt.step();
-    const user = userStmt.getAsObject();
-    userStmt.free();
+    const { lastInsertRowid: userId } = db
+      .prepare(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`)
+      .run(name.trim(), email, hashed, role);
+    const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(userId);
 
     if (role === 'student') {
-      db.run(`INSERT INTO student_profiles (user_id, phone) VALUES (?, ?)`, [
+      db.prepare(`INSERT INTO student_profiles (user_id, phone) VALUES (?, ?)`).run(
         user.id,
-        req.body.phone || '',
-      ]);
+        req.body.phone || ''
+      );
     } else if (role === 'landlord') {
-      db.run(`INSERT INTO landlord_profiles (user_id, phone) VALUES (?, ?)`, [
+      db.prepare(`INSERT INTO landlord_profiles (user_id, phone) VALUES (?, ?)`).run(
         user.id,
-        req.body.phone || '',
-      ]);
+        req.body.phone || ''
+      );
     }
-
-    saveDB();
 
     req.session.regenerate((err) => {
       try {
@@ -138,11 +125,7 @@ const login = async (req, res) => {
 
     const db = getDB();
 
-    const stmt = db.prepare(`SELECT * FROM users WHERE email = ?`);
-    stmt.bind([email]);
-    const found = stmt.step();
-    const user = found ? stmt.getAsObject() : null;
-    stmt.free();
+    const user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(email);
 
     // Same message for unknown email and wrong password, so the form can't be
     // used to discover which addresses have accounts.
@@ -211,16 +194,13 @@ const forgotPassword = async (req, res) => {
     const db = getDB();
 
     // Opportunistic cleanup: expired tokens are dead weight and extra exposure.
-    db.run(`DELETE FROM password_resets WHERE expires_at < ?`, [Date.now()]);
+    db.prepare(`DELETE FROM password_resets WHERE expires_at < ?`).run(Date.now());
 
-    const stmt = db.prepare(`SELECT id, email FROM users WHERE email = ? AND is_active = 1`);
-    stmt.bind([email]);
-    const found = stmt.step();
-    const user = found ? stmt.getAsObject() : null;
-    stmt.free();
+    const user = db
+      .prepare(`SELECT id, email FROM users WHERE email = ? AND is_active = 1`)
+      .get(email);
 
     if (!user) {
-      saveDB();
       return res.render('auth/forgot-password', {
         error: null,
         resetLink: null,
@@ -231,14 +211,10 @@ const forgotPassword = async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 3600000; // 1 hour
 
-    db.run(`DELETE FROM password_resets WHERE user_id = ?`, [user.id]);
-    db.run(`INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`, [
-      crypto.randomUUID(),
-      user.id,
-      hashToken(token),
-      expiresAt,
-    ]);
-    saveDB();
+    db.prepare(`DELETE FROM password_resets WHERE user_id = ?`).run(user.id);
+    db.prepare(
+      `INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
+    ).run(crypto.randomUUID(), user.id, hashToken(token), expiresAt);
 
     // Never build the link from the Host header: an attacker who sets
     // Host: evil.com would receive a working reset link for someone else's
@@ -287,11 +263,7 @@ const showResetPassword = (req, res) => {
   }
 
   const db = getDB();
-  const stmt = db.prepare(`SELECT * FROM password_resets WHERE token = ?`);
-  stmt.bind([hashToken(token)]);
-  const found = stmt.step();
-  const reset = found ? stmt.getAsObject() : null;
-  stmt.free();
+  const reset = db.prepare(`SELECT * FROM password_resets WHERE token = ?`).get(hashToken(token));
 
   if (!reset || reset.expires_at < Date.now()) {
     return res.render('auth/reset-password', {
@@ -312,11 +284,7 @@ const resetPassword = async (req, res) => {
   try {
     const db = getDB();
     const tokenHash = hashToken(token);
-    const stmt = db.prepare(`SELECT * FROM password_resets WHERE token = ?`);
-    stmt.bind([tokenHash]);
-    const found = stmt.step();
-    const reset = found ? stmt.getAsObject() : null;
-    stmt.free();
+    const reset = db.prepare(`SELECT * FROM password_resets WHERE token = ?`).get(tokenHash);
 
     if (!reset || reset.expires_at < Date.now()) {
       return res.render('auth/reset-password', {
@@ -344,9 +312,8 @@ const resetPassword = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(new_password, 10);
-    db.run(`UPDATE users SET password = ? WHERE id = ?`, [hashed, reset.user_id]);
-    db.run(`DELETE FROM password_resets WHERE token = ?`, [tokenHash]);
-    saveDB();
+    db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(hashed, reset.user_id);
+    db.prepare(`DELETE FROM password_resets WHERE token = ?`).run(tokenHash);
 
     res.redirect('/login?success=password_reset');
   } catch (err) {

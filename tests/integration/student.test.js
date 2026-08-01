@@ -11,13 +11,7 @@ const OTHER_PASSWORD = newPassword();
 describe('student', () => {
   let app, db, cleanup, brianId;
 
-  const one = (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    if (params.length) stmt.bind(params);
-    const row = stmt.step() ? stmt.getAsObject() : null;
-    stmt.free();
-    return row;
-  };
+  const one = (sql, params = []) => db.prepare(sql).get(...params) ?? null;
 
   const approvedHouse = () =>
     one(`SELECT * FROM houses WHERE status='approved' AND is_available=1 ORDER BY id LIMIT 1`);
@@ -188,17 +182,18 @@ describe('student', () => {
 
   describe('bookings', () => {
     const freshHouse = () => {
-      db.run(
-        `INSERT INTO houses (landlord_id,title,description,rent,location,status,is_available)
-              VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,'approved',1)`,
-        [
+      const { lastInsertRowid } = db
+        .prepare(
+          `INSERT INTO houses (landlord_id,title,description,rent,location,status,is_available)
+              VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,'approved',1)`
+        )
+        .run(
           'Bookable listing ' + Math.random(),
           'A description long enough to pass validation.',
           9000,
-          'Ngong Road',
-        ]
-      );
-      return db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+          'Ngong Road'
+        );
+      return lastInsertRowid;
     };
 
     test('creates a viewing request', async () => {
@@ -266,17 +261,18 @@ describe('student', () => {
 
   describe('reviews', () => {
     const unreviewedHouse = () => {
-      db.run(
-        `INSERT INTO houses (landlord_id,title,description,rent,location,status)
-              VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,'approved')`,
-        [
+      const { lastInsertRowid } = db
+        .prepare(
+          `INSERT INTO houses (landlord_id,title,description,rent,location,status)
+              VALUES ((SELECT id FROM users WHERE email='james@landlord.com'),?,?,?,?,'approved')`
+        )
+        .run(
           'Reviewable listing ' + Math.random(),
           'A description long enough to pass validation.',
           9000,
-          'Ngong Road',
-        ]
-      );
-      return db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+          'Ngong Road'
+        );
+      return lastInsertRowid;
     };
 
     test('posts a review', async () => {

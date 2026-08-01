@@ -1,5 +1,4 @@
-const initSqlJs = require('sql.js');
-const fs = require('fs');
+const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
@@ -14,22 +13,11 @@ function isQuiet() {
 }
 
 async function initDB() {
-  const SQL = await initSqlJs();
+  db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
 
-  if (fs.existsSync(DB_PATH)) {
-    db = new SQL.Database(fs.readFileSync(DB_PATH));
-  } else {
-    db = new SQL.Database();
-  }
-
-  db.run(`PRAGMA foreign_keys = ON`);
-
-  // unref so this timer alone never holds the process open. The server keeps
-  // itself alive via its listening socket; a test run or a one-off script has
-  // nothing to keep alive and would otherwise hang for good.
-  setInterval(saveDB, 5000).unref();
-
-  db.run(`CREATE TABLE IF NOT EXISTS users (
+  db.exec(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -39,7 +27,7 @@ async function initDB() {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS student_profiles (
+  db.exec(`CREATE TABLE IF NOT EXISTS student_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE NOT NULL,
     phone TEXT,
@@ -49,7 +37,7 @@ async function initDB() {
     FOREIGN KEY(user_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS landlord_profiles (
+  db.exec(`CREATE TABLE IF NOT EXISTS landlord_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE NOT NULL,
     phone TEXT,
@@ -59,7 +47,7 @@ async function initDB() {
     FOREIGN KEY(user_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS houses (
+  db.exec(`CREATE TABLE IF NOT EXISTS houses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     landlord_id INTEGER NOT NULL,
     title TEXT NOT NULL,
@@ -75,14 +63,14 @@ async function initDB() {
     FOREIGN KEY(landlord_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS amenities (
+  db.exec(`CREATE TABLE IF NOT EXISTS amenities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     FOREIGN KEY(house_id) REFERENCES houses(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS house_images (
+  db.exec(`CREATE TABLE IF NOT EXISTS house_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     image_path TEXT NOT NULL,
@@ -90,7 +78,7 @@ async function initDB() {
     FOREIGN KEY(house_id) REFERENCES houses(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS bookings (
+  db.exec(`CREATE TABLE IF NOT EXISTS bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     student_id INTEGER NOT NULL,
@@ -103,7 +91,7 @@ async function initDB() {
     FOREIGN KEY(student_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS reviews (
+  db.exec(`CREATE TABLE IF NOT EXISTS reviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     student_id INTEGER NOT NULL,
@@ -114,7 +102,7 @@ async function initDB() {
     FOREIGN KEY(student_id) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS reports (
+  db.exec(`CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     reported_by INTEGER NOT NULL,
@@ -125,7 +113,7 @@ async function initDB() {
     FOREIGN KEY(reported_by) REFERENCES users(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS password_resets (
+  db.exec(`CREATE TABLE IF NOT EXISTS password_resets (
     id TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
     token TEXT UNIQUE NOT NULL,
@@ -134,41 +122,38 @@ async function initDB() {
 
   // Safe migration: add rejection_reason column if not present
   try {
-    db.run(`ALTER TABLE houses ADD COLUMN rejection_reason TEXT`);
+    db.exec(`ALTER TABLE houses ADD COLUMN rejection_reason TEXT`);
   } catch (_) {}
 
   // Safe migration: add sort_order so landlords can reorder listing photos.
   // Backfill by id so existing galleries keep their original upload order.
   try {
-    db.run(`ALTER TABLE house_images ADD COLUMN sort_order INTEGER DEFAULT 0`);
-    db.run(`UPDATE house_images SET sort_order = id`);
+    db.exec(`ALTER TABLE house_images ADD COLUMN sort_order INTEGER DEFAULT 0`);
+    db.exec(`UPDATE house_images SET sort_order = id`);
   } catch (_) {}
 
-  db.run(`CREATE INDEX IF NOT EXISTS idx_house_images_house ON house_images(house_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_amenities_house    ON amenities(house_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_house     ON bookings(house_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_student   ON bookings(student_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_house      ON reviews(house_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_reports_house      ON reports(house_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_houses_landlord    ON houses(landlord_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_houses_status      ON houses(status, is_available)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_house_images_house ON house_images(house_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_amenities_house    ON amenities(house_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bookings_house     ON bookings(house_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bookings_student   ON bookings(student_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_reviews_house      ON reviews(house_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_reports_house      ON reports(house_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_houses_landlord    ON houses(landlord_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_houses_status      ON houses(status, is_available)`);
 
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword) throw new Error('ADMIN_PASSWORD env var is required');
 
-  const stmt = db.prepare(`SELECT id FROM users WHERE email = ?`);
-  stmt.bind(['admin@kejahub.com']);
-  const adminExists = stmt.step();
-  stmt.free();
+  const adminExists = db.prepare(`SELECT id FROM users WHERE email = ?`).get('admin@kejahub.com');
 
   if (!adminExists) {
     const hashed = bcrypt.hashSync(adminPassword, 12);
-    db.run(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`, [
+    db.prepare(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`).run(
       'Admin',
       'admin@kejahub.com',
       hashed,
-      'admin',
-    ]);
+      'admin'
+    );
   }
 
   try {
@@ -177,7 +162,6 @@ async function initDB() {
     console.warn('Seed skipped:', e.message);
   }
 
-  saveDB();
   if (!isQuiet()) console.log('KejaHub database ready');
 }
 
@@ -205,14 +189,11 @@ function seedSampleData(db) {
     return;
   }
 
-  const check = db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`);
-  check.step();
-  const count = check.getAsObject().c;
-  check.free();
+  const { c: count } = db.prepare(`SELECT COUNT(*) as c FROM users WHERE role != 'admin'`).get();
   if (count > 0) return;
 
   const pw = bcrypt.hashSync(resolveSeedPassword(), 10);
-  const lastId = () => db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+  const insertUser = db.prepare(`INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)`);
 
   // ── Landlords ──────────────────────────────────────────────────────────────
   const landlordDefs = [
@@ -223,22 +204,14 @@ function seedSampleData(db) {
     ['David Kimani', 'david@landlord.com', '0756789012', '45678901', 0],
     ['Sarah Muthoni', 'sarah@landlord.com', '0767890123', '56789012', 1],
   ];
+  const insertLandlordProfile = db.prepare(
+    `INSERT INTO landlord_profiles (user_id,phone,id_number,is_verified) VALUES (?,?,?,?)`
+  );
   const llIds = [];
   for (const [name, email, phone, idnum, verified] of landlordDefs) {
-    db.run(`INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)`, [
-      name,
-      email,
-      pw,
-      'landlord',
-    ]);
-    const uid = lastId();
+    const { lastInsertRowid: uid } = insertUser.run(name, email, pw, 'landlord');
     llIds.push(uid);
-    db.run(`INSERT INTO landlord_profiles (user_id,phone,id_number,is_verified) VALUES (?,?,?,?)`, [
-      uid,
-      phone,
-      idnum,
-      verified,
-    ]);
+    insertLandlordProfile.run(uid, phone, idnum, verified);
   }
   const [jamesId, graceId, peterId, maryId, davidId, sarahId] = llIds;
 
@@ -281,22 +254,14 @@ function seedSampleData(db) {
       'Data Science',
     ],
   ];
+  const insertStudentProfile = db.prepare(
+    `INSERT INTO student_profiles (user_id,phone,university,course) VALUES (?,?,?,?)`
+  );
   const stIds = [];
   for (const [name, email, phone, uni, course] of studentDefs) {
-    db.run(`INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)`, [
-      name,
-      email,
-      pw,
-      'student',
-    ]);
-    const uid = lastId();
+    const { lastInsertRowid: uid } = insertUser.run(name, email, pw, 'student');
     stIds.push(uid);
-    db.run(`INSERT INTO student_profiles (user_id,phone,university,course) VALUES (?,?,?,?)`, [
-      uid,
-      phone,
-      uni,
-      course,
-    ]);
+    insertStudentProfile.run(uid, phone, uni, course);
   }
   const [
     brianId,
@@ -720,13 +685,13 @@ function seedSampleData(db) {
     ],
   ];
 
+  const insertHouse = db.prepare(
+    `INSERT INTO houses (landlord_id,title,description,rent,location,estate,bedrooms,bathrooms,status,rejection_reason) VALUES (?,?,?,?,?,?,?,?,?,?)`
+  );
   const houseIds = [];
   for (const h of houseDefs) {
-    db.run(
-      `INSERT INTO houses (landlord_id,title,description,rent,location,estate,bedrooms,bathrooms,status,rejection_reason) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      h
-    );
-    houseIds.push(lastId());
+    const { lastInsertRowid } = insertHouse.run(...h);
+    houseIds.push(lastInsertRowid);
   }
 
   // ── Amenities (33 entries matching houseDefs order) ────────────────────────
@@ -771,18 +736,17 @@ function seedSampleData(db) {
     ['Water', 'Electricity'],
     ['WiFi', 'Water', 'Electricity', 'Security'],
   ];
+  const insertAmenity = db.prepare(`INSERT INTO amenities (house_id,name) VALUES (?,?)`);
   amenMap.forEach((list, idx) => {
-    list.forEach((name) =>
-      db.run(`INSERT INTO amenities (house_id,name) VALUES (?,?)`, [houseIds[idx], name])
-    );
+    list.forEach((name) => insertAmenity.run(houseIds[idx], name));
   });
 
   // ── Images (one placeholder per house) ────────────────────────────────────
+  const insertImage = db.prepare(
+    `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`
+  );
   houseIds.forEach((hId) => {
-    db.run(
-      `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`,
-      [hId, '/images/background.jpg', 1, 0]
-    );
+    insertImage.run(hId, '/images/background.jpg', 1, 0);
   });
 
   // ── Reviews (idx = houseIds index, only approved houses) ──────────────────
@@ -832,13 +796,11 @@ function seedSampleData(db) {
     [31, dianaId, 4, 'Nice bedsitter near Kiambu Road. Good transport links.'],
     [32, oscarId, 4, 'Kitengela is growing fast. Good modern 2-bedroom. SGR nearby is a plus.'],
   ];
+  const insertReview = db.prepare(
+    `INSERT INTO reviews (house_id,student_id,rating,comment) VALUES (?,?,?,?)`
+  );
   for (const [idx, studentId, rating, comment] of reviewDefs) {
-    db.run(`INSERT INTO reviews (house_id,student_id,rating,comment) VALUES (?,?,?,?)`, [
-      houseIds[idx],
-      studentId,
-      rating,
-      comment,
-    ]);
+    insertReview.run(houseIds[idx], studentId, rating, comment);
   }
 
   // ── Bookings ───────────────────────────────────────────────────────────────
@@ -956,11 +918,11 @@ function seedSampleData(db) {
       '2026-06-30',
     ],
   ];
+  const insertBooking = db.prepare(
+    `INSERT INTO bookings (house_id,student_id,type,status,message,visit_date) VALUES (?,?,?,?,?,?)`
+  );
   for (const b of bookingDefs) {
-    db.run(
-      `INSERT INTO bookings (house_id,student_id,type,status,message,visit_date) VALUES (?,?,?,?,?,?)`,
-      b
-    );
+    insertBooking.run(...b);
   }
 
   // ── Reports ────────────────────────────────────────────────────────────────
@@ -996,8 +958,11 @@ function seedSampleData(db) {
       'open',
     ],
   ];
+  const insertReport = db.prepare(
+    `INSERT INTO reports (house_id,reported_by,reason,status) VALUES (?,?,?,?)`
+  );
   for (const r of reportDefs) {
-    db.run(`INSERT INTO reports (house_id,reported_by,reason,status) VALUES (?,?,?,?)`, r);
+    insertReport.run(...r);
   }
 
   if (!isQuiet())
@@ -1006,45 +971,28 @@ function seedSampleData(db) {
     );
 }
 
-// Write to a temp file then rename. rename() is atomic on POSIX, so a crash
-// mid-save leaves the previous database intact instead of a truncated file.
-function saveDB() {
-  if (!db) return;
-  const tmpPath = DB_PATH + '.tmp';
-  try {
-    fs.writeFileSync(tmpPath, Buffer.from(db.export()));
-    fs.renameSync(tmpPath, DB_PATH);
-  } catch (err) {
-    console.error('Database save failed:', err.message);
-    try {
-      fs.unlinkSync(tmpPath);
-    } catch (_) {}
-  }
-}
-
 function getDB() {
   return db;
 }
 
-function rowsToObjects(result) {
-  if (!result || result.length === 0) return [];
-  const { columns, values } = result[0];
-  return values.map((row) => Object.fromEntries(columns.map((c, i) => [c, row[i]])));
-}
+// better-sqlite3 writes through to disk on every statement, so there is no
+// in-memory buffer to flush. Kept as a no-op export rather than deleting the
+// ~25 call sites across the controllers that assumed a manual save step.
+function saveDB() {}
 
-function firstRow(result) {
-  const rows = rowsToObjects(result);
-  return rows.length > 0 ? rows[0] : null;
+function closeDB() {
+  if (db) db.close();
 }
 
 function getDistinctLocations() {
   if (!db) return [];
-  const result = db.exec(
-    `SELECT DISTINCT location FROM houses WHERE status='approved'
-     AND location IS NOT NULL AND TRIM(location)!='' ORDER BY location ASC`
-  );
-  if (!result || !result.length) return [];
-  return result[0].values.map((r) => r[0]);
+  return db
+    .prepare(
+      `SELECT DISTINCT location FROM houses WHERE status='approved'
+       AND location IS NOT NULL AND TRIM(location)!='' ORDER BY location ASC`
+    )
+    .all()
+    .map((r) => r.location);
 }
 
-module.exports = { initDB, saveDB, getDB, rowsToObjects, firstRow, getDistinctLocations };
+module.exports = { initDB, saveDB, closeDB, getDB, getDistinctLocations };

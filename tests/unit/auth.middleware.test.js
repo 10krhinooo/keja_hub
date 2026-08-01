@@ -43,19 +43,14 @@ describe('auth middleware', () => {
   before(async () => {
     ({ db } = await createTestApp());
 
-    const stmt = db.prepare(`SELECT id FROM users WHERE email = ?`);
-    stmt.bind(['brian@student.com']);
-    stmt.step();
-    activeStudentId = stmt.getAsObject().id;
-    stmt.free();
+    activeStudentId = db
+      .prepare(`SELECT id FROM users WHERE email = ?`)
+      .get('brian@student.com').id;
 
-    db.run(`INSERT INTO users (name,email,password,role,is_active) VALUES (?,?,?,?,0)`, [
-      'Gone',
-      'deactivated@student.com',
-      'x',
-      'student',
-    ]);
-    deactivatedId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+    const { lastInsertRowid } = db
+      .prepare(`INSERT INTO users (name,email,password,role,is_active) VALUES (?,?,?,?,0)`)
+      .run('Gone', 'deactivated@student.com', 'x', 'student');
+    deactivatedId = lastInsertRowid;
   });
 
   describe('requireLogin', () => {

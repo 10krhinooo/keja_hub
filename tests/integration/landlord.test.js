@@ -23,43 +23,20 @@ const validListing = () => ({
 describe('landlord', () => {
   let app, db, cleanup, james, grace;
 
-  const houseOf = (landlordId) => {
-    const stmt = db.prepare(`SELECT * FROM houses WHERE landlord_id = ? ORDER BY id LIMIT 1`);
-    stmt.bind([landlordId]);
-    stmt.step();
-    const row = stmt.getAsObject();
-    stmt.free();
-    return row;
-  };
+  const houseOf = (landlordId) =>
+    db.prepare(`SELECT * FROM houses WHERE landlord_id = ? ORDER BY id LIMIT 1`).get(landlordId);
 
-  const userId = (email) => {
-    const stmt = db.prepare(`SELECT id FROM users WHERE email = ?`);
-    stmt.bind([email]);
-    stmt.step();
-    const { id } = stmt.getAsObject();
-    stmt.free();
-    return id;
-  };
+  const userId = (email) => db.prepare(`SELECT id FROM users WHERE email = ?`).get(email).id;
 
-  const imagesOf = (houseId) => {
-    const stmt = db.prepare(
-      `SELECT id, image_path, is_primary, sort_order FROM house_images
+  const imagesOf = (houseId) =>
+    db
+      .prepare(
+        `SELECT id, image_path, is_primary, sort_order FROM house_images
        WHERE house_id = ? ORDER BY sort_order ASC, id ASC`
-    );
-    stmt.bind([houseId]);
-    const rows = [];
-    while (stmt.step()) rows.push(stmt.getAsObject());
-    stmt.free();
-    return rows;
-  };
+      )
+      .all(houseId);
 
-  const houseById = (id) => {
-    const stmt = db.prepare(`SELECT * FROM houses WHERE id = ?`);
-    stmt.bind([id]);
-    const row = stmt.step() ? stmt.getAsObject() : null;
-    stmt.free();
-    return row;
-  };
+  const houseById = (id) => db.prepare(`SELECT * FROM houses WHERE id = ?`).get(id) ?? null;
 
   before(async () => {
     ({ app, db, cleanup } = await createTestApp());
@@ -124,11 +101,7 @@ describe('landlord', () => {
       assert.equal(res.status, 302);
       assert.match(res.headers.location, /success=listing_submitted/);
 
-      const stmt = db.prepare(`SELECT * FROM houses WHERE title = ?`);
-      stmt.bind([validListing().title]);
-      stmt.step();
-      const house = stmt.getAsObject();
-      stmt.free();
+      const house = db.prepare(`SELECT * FROM houses WHERE title = ?`).get(validListing().title);
 
       assert.equal(house.landlord_id, james);
       assert.equal(house.status, 'pending', 'new listings await admin review');
@@ -274,18 +247,18 @@ describe('landlord', () => {
 
     test('a rejected listing returns to pending and reports a resubmission', async () => {
       const client = await loginAs(app, 'landlord');
-      db.run(
-        `INSERT INTO houses (landlord_id,title,description,rent,location,status,rejection_reason)
-              VALUES (?,?,?,?,?,'rejected','Photos were unclear')`,
-        [
+      const { lastInsertRowid: id } = db
+        .prepare(
+          `INSERT INTO houses (landlord_id,title,description,rent,location,status,rejection_reason)
+              VALUES (?,?,?,?,?,'rejected','Photos were unclear')`
+        )
+        .run(
           james,
           'Rejected listing under appeal',
           'A description long enough to pass validation checks.',
           8000,
-          'Ngong Road',
-        ]
-      );
-      const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+          'Ngong Road'
+        );
 
       const token = await client.csrf('/landlord/dashboard');
       const res = await client.agent
@@ -305,12 +278,12 @@ describe('landlord', () => {
     test('reorders photos and moves the cover', async () => {
       const client = await loginAs(app, 'landlord');
       const house = houseOf(james);
-      db.run(`DELETE FROM house_images WHERE house_id = ?`, [house.id]);
+      db.prepare(`DELETE FROM house_images WHERE house_id = ?`).run(house.id);
+      const insertImg = db.prepare(
+        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`
+      );
       for (let i = 0; i < 3; i++) {
-        db.run(
-          `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`,
-          [house.id, `/uploads/houses/reorder-${i}.jpg`, i === 0 ? 1 : 0, i]
-        );
+        insertImg.run(house.id, `/uploads/houses/reorder-${i}.jpg`, i === 0 ? 1 : 0, i);
       }
       const ids = imagesOf(house.id).map((i) => i.id);
 
@@ -338,12 +311,12 @@ describe('landlord', () => {
     test('deletes only the photos the landlord selected', async () => {
       const client = await loginAs(app, 'landlord');
       const house = houseOf(james);
-      db.run(`DELETE FROM house_images WHERE house_id = ?`, [house.id]);
+      db.prepare(`DELETE FROM house_images WHERE house_id = ?`).run(house.id);
+      const insertImg = db.prepare(
+        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`
+      );
       for (let i = 0; i < 3; i++) {
-        db.run(
-          `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`,
-          [house.id, `/uploads/houses/del-${i}.jpg`, i === 0 ? 1 : 0, i]
-        );
+        insertImg.run(house.id, `/uploads/houses/del-${i}.jpg`, i === 0 ? 1 : 0, i);
       }
       const ids = imagesOf(house.id).map((i) => i.id);
 
@@ -368,11 +341,11 @@ describe('landlord', () => {
       const client = await loginAs(app, 'landlord');
       const mine = houseOf(james);
       const theirs = houseOf(grace);
-      db.run(
-        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`,
-        [theirs.id, '/uploads/houses/not-mine.jpg']
-      );
-      const foreignId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+      const { lastInsertRowid: foreignId } = db
+        .prepare(
+          `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`
+        )
+        .run(theirs.id, '/uploads/houses/not-mine.jpg');
 
       const token = await client.csrf('/landlord/dashboard');
       await client.agent
@@ -393,12 +366,12 @@ describe('landlord', () => {
     test('rejects an edit that would exceed the photo cap', async () => {
       const client = await loginAs(app, 'landlord');
       const house = houseOf(james);
-      db.run(`DELETE FROM house_images WHERE house_id = ?`, [house.id]);
+      db.prepare(`DELETE FROM house_images WHERE house_id = ?`).run(house.id);
+      const insertImg = db.prepare(
+        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`
+      );
       for (let i = 0; i < 9; i++) {
-        db.run(
-          `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,?,?)`,
-          [house.id, `/uploads/houses/cap-${i}.jpg`, i === 0 ? 1 : 0, i]
-        );
+        insertImg.run(house.id, `/uploads/houses/cap-${i}.jpg`, i === 0 ? 1 : 0, i);
       }
 
       const token = await client.csrf('/landlord/dashboard');
@@ -449,23 +422,22 @@ describe('landlord', () => {
   describe('delete house', () => {
     test('removes the listing, its rows and its files', async () => {
       const client = await loginAs(app, 'landlord');
-      db.run(
-        `INSERT INTO houses (landlord_id,title,description,rent,location,status)
-              VALUES (?,?,?,?,?,'approved')`,
-        [
+      const { lastInsertRowid: id } = db
+        .prepare(
+          `INSERT INTO houses (landlord_id,title,description,rent,location,status)
+              VALUES (?,?,?,?,?,'approved')`
+        )
+        .run(
           james,
           'Listing about to be deleted',
           'A description long enough to pass validation.',
           7000,
-          'Ngong Road',
-        ]
-      );
-      const id = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
-      db.run(
-        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`,
-        [id, '/uploads/houses/doomed.jpg']
-      );
-      db.run(`INSERT INTO amenities (house_id,name) VALUES (?,'WiFi')`, [id]);
+          'Ngong Road'
+        );
+      db.prepare(
+        `INSERT INTO house_images (house_id,image_path,is_primary,sort_order) VALUES (?,?,1,0)`
+      ).run(id, '/uploads/houses/doomed.jpg');
+      db.prepare(`INSERT INTO amenities (house_id,name) VALUES (?,'WiFi')`).run(id);
 
       const res = await client.post(`/landlord/house/${id}/delete`, {}, '/landlord/dashboard');
       assert.equal(res.status, 302);
@@ -496,12 +468,13 @@ describe('landlord', () => {
 
   describe('bookings', () => {
     const bookingFor = (houseId) => {
-      db.run(
-        `INSERT INTO bookings (house_id, student_id, type, status, message)
-              VALUES (?, (SELECT id FROM users WHERE email='brian@student.com'), 'viewing', 'pending', 'Hi')`,
-        [houseId]
-      );
-      return db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+      const { lastInsertRowid } = db
+        .prepare(
+          `INSERT INTO bookings (house_id, student_id, type, status, message)
+              VALUES (?, (SELECT id FROM users WHERE email='brian@student.com'), 'viewing', 'pending', 'Hi')`
+        )
+        .run(houseId);
+      return lastInsertRowid;
     };
 
     test('accepts a booking on an owned listing', async () => {
@@ -575,11 +548,9 @@ describe('landlord', () => {
       );
       assert.match(res.headers.location, /success=profile_updated/);
 
-      const stmt = db.prepare(`SELECT phone, id_number FROM landlord_profiles WHERE user_id = ?`);
-      stmt.bind([james]);
-      stmt.step();
-      const profile = stmt.getAsObject();
-      stmt.free();
+      const profile = db
+        .prepare(`SELECT phone, id_number FROM landlord_profiles WHERE user_id = ?`)
+        .get(james);
       assert.equal(profile.phone, '0700000001');
     });
 
@@ -591,11 +562,7 @@ describe('landlord', () => {
         '/landlord/profile'
       );
 
-      const stmt = db.prepare(`SELECT name FROM users WHERE id = ?`);
-      stmt.bind([james]);
-      stmt.step();
-      const { name } = stmt.getAsObject();
-      stmt.free();
+      const { name } = db.prepare(`SELECT name FROM users WHERE id = ?`).get(james);
       assert.notEqual(name.trim(), '');
     });
   });

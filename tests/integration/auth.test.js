@@ -11,13 +11,7 @@ const OTHER_PASSWORD = newPassword();
 describe('auth', () => {
   let app, db, cleanup;
 
-  const one = (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    if (params.length) stmt.bind(params);
-    const row = stmt.step() ? stmt.getAsObject() : null;
-    stmt.free();
-    return row;
-  };
+  const one = (sql, params = []) => db.prepare(sql).get(...params) ?? null;
 
   // The forgot-password page surfaces the reset link when SMTP is not
   // configured, which is exactly the case under test.
@@ -176,12 +170,12 @@ describe('auth', () => {
     test('refuses a deactivated account with a distinct message', async () => {
       const bcrypt = require('bcryptjs');
       const hash = bcrypt.hashSync(CREDENTIALS.seedPassword, 10);
-      db.run(`INSERT INTO users (name,email,password,role,is_active) VALUES (?,?,?,?,0)`, [
+      db.prepare(`INSERT INTO users (name,email,password,role,is_active) VALUES (?,?,?,?,0)`).run(
         'Blocked',
         'blocked@student.com',
         hash,
-        'student',
-      ]);
+        'student'
+      );
 
       const client = createAgent(app);
       const res = await client.login('blocked@student.com', CREDENTIALS.seedPassword);
@@ -353,10 +347,10 @@ describe('auth', () => {
       const token = await tokenFor('lydia@student.com');
       const crypto = require('crypto');
       const hashed = crypto.createHash('sha256').update(token).digest('hex');
-      db.run(`UPDATE password_resets SET expires_at = ? WHERE token = ?`, [
+      db.prepare(`UPDATE password_resets SET expires_at = ? WHERE token = ?`).run(
         Date.now() - 1000,
-        hashed,
-      ]);
+        hashed
+      );
 
       const res = await createAgent(app).post(
         '/reset-password',
