@@ -39,12 +39,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        // The views carry inline <script>/<style> blocks and Google Fonts.
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        // 31 inline onclick/onsubmit handlers remain across the views. Blocking
-        // them (helmet's default) would break password toggles and delete
-        // confirmations. Move them to addEventListener, then drop this line.
-        scriptSrcAttr: ["'unsafe-inline'"],
+        // Every inline handler and inline <script> block has been moved to
+        // frontend/public/js/*.js, addressed via data attributes. scriptSrcAttr
+        // is left at helmet's default of 'none'.
+        scriptSrc: ["'self'"],
+        // The views still carry inline style="..." attributes and a Google
+        // Fonts stylesheet. Tracked in PROJECT_DOCUMENTATION.md section 11.
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:'],

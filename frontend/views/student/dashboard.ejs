@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/toast.js"></script>
   <script src="/js/skeleton.js"></script>
+  <style>.search-btn:hover { background: #A86228 !important; }</style>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success === 'welcome') ? 'welcome' : ((query && query.success) || '') %>" data-toast-error="<%= (query && query.error) || '' %>" data-user-name="<%= user.name %>">
   <%- include('../partials/nav-student') %>
 
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
@@ -28,9 +29,8 @@
       <form action="/student/search" method="GET" style="display:flex;gap:8px;max-width:520px">
         <input type="text" name="keyword" placeholder="Search by location, name…"
           style="flex:1;padding:11px 16px;border:1.5px solid rgba(255,255,255,0.2);border-radius:8px;font-size:14px;background:rgba(255,255,255,0.1);color:white;font-family:inherit">
-        <button type="submit"
-          style="padding:11px 24px;background:#C97D3A;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;white-space:nowrap;transition:background .2s"
-          onmouseover="this.style.background='#A86228'" onmouseout="this.style.background='#C97D3A'">
+        <button type="submit" class="search-btn"
+          style="padding:11px 24px;background:#C97D3A;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;white-space:nowrap;transition:background .2s">
           Search
         </button>
       </form>
@@ -89,13 +89,6 @@
 
   </div>
 
-  <% if (query && query.success === 'welcome') { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success('Welcome back, ' + <%- JSON.stringify(user.name) %> + '!');});</script>
-  <% } else if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
+  <script src="/js/toast-init.js"></script>
 </body>
 </html>

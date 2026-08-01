@@ -22,7 +22,7 @@
     .pagination a.pg-active { background:#1B4332; color:white; border-color:#1B4332; }
   </style>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-admin') %>
   <div style="max-width:1100px;margin:32px auto;padding:0 24px">
 
@@ -83,7 +83,7 @@
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button class="btn btn-success btn-sm">Approve</button>
                     </form>
-                    <span onclick="toggleReject(<%= h.id %>)" style="margin-left:4px">
+                    <span data-toggle-reject="<%= h.id %>" style="margin-left:4px">
                       <button type="button" class="btn btn-danger btn-sm">Reject</button>
                     </span>
                     <form method="POST" action="/admin/house/<%= h.id %>/reject" class="reject-form" id="reject-<%= h.id %>">
@@ -117,17 +117,7 @@
     <% } %>
   </div>
 
-  <% if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
-  <script>
-    function toggleReject(id) {
-      var form = document.getElementById('reject-' + id);
-      form.style.display = form.style.display === 'block' ? 'none' : 'block';
-    }
-  </script>
+  <script src="/js/toast-init.js"></script>
+  <script src="/js/admin-listings.js"></script>
 </body>
 </html>

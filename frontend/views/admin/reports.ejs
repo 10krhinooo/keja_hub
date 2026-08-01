@@ -16,7 +16,7 @@
     .reason-toggle:hover { color:#2D6A4F; }
   </style>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success) || '' %>">
   <%- include('../partials/nav-admin') %>
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -58,7 +58,7 @@
                   <span class="reason-short"><%= r.reason.length > 80 ? r.reason.slice(0, 80) + '…' : r.reason %></span>
                   <% if (r.reason.length > 80) { %>
                     <span class="reason-full" style="display:none"><%= r.reason %></span>
-                    <button type="button" class="reason-toggle" onclick="toggleReason(this)">Show more</button>
+                    <button type="button" class="reason-toggle">Show more</button>
                   <% } %>
                 </td>
                 <td><span class="date-val"><%= r.created_at %></span></td>
@@ -84,19 +84,7 @@
       </table>
     </div>
   </div>
-  <% if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <script>
-    function toggleReason(btn) {
-      var cell    = btn.parentElement;
-      var shortEl = cell.querySelector('.reason-short');
-      var fullEl  = cell.querySelector('.reason-full');
-      var expanded = fullEl.style.display !== 'none';
-      shortEl.style.display = expanded ? '' : 'none';
-      fullEl.style.display  = expanded ? 'none' : '';
-      btn.textContent = expanded ? 'Show more' : 'Show less';
-    }
-  </script>
+  <script src="/js/toast-init.js"></script>
+  <script src="/js/admin-reports.js"></script>
 </body>
 </html>

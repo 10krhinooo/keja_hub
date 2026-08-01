@@ -9,7 +9,7 @@
   <script src="/js/dates.js"></script>
   <script src="/js/lightbox.js"></script>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-landlord') %>
   <div style="max-width:900px;margin:32px auto;padding:0 24px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -100,11 +100,6 @@
       <% } %>
     </div>
   </div>
-  <% if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
+  <script src="/js/toast-init.js"></script>
 </body>
 </html>
