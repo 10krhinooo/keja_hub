@@ -11,13 +11,17 @@ const {
   MAX_IMAGES_PER_HOUSE,
   deleteImageFiles,
   deleteUploadedFiles,
+  processAndStoreUploads,
   getHouseImagePaths,
+  getHouseAssetPaths,
   getHouseImages,
   normalizePrimary,
   applyImageOrder,
   nextSortOrder,
   countHouseImages,
 } = houseImages;
+
+const { JPEG_1X1 } = require('../helpers/fixtures');
 
 const PROJECT_ROOT = path.join(__dirname, '../../');
 const UPLOAD_ROOT = path.join(PROJECT_ROOT, 'uploads');
@@ -70,6 +74,25 @@ describe('houseImages', () => {
 
     test('is empty for an unknown house', () => {
       assert.deepEqual(getHouseImagePaths(db, 999), []);
+    });
+  });
+
+  describe('getHouseAssetPaths', () => {
+    test('includes both the main image and thumbnail', () => {
+      addImages(db, 1, [
+        { path: '/uploads/houses/a.jpg', thumbnail: '/uploads/houses/a-thumb.jpg' },
+      ]);
+      const paths = getHouseAssetPaths(db, 1);
+      assert.deepEqual(paths.sort(), ['/uploads/houses/a-thumb.jpg', '/uploads/houses/a.jpg']);
+    });
+
+    test('drops a null thumbnail rather than including it', () => {
+      addImages(db, 1, [{ path: '/uploads/houses/a.jpg' }]);
+      assert.deepEqual(getHouseAssetPaths(db, 1), ['/uploads/houses/a.jpg']);
+    });
+
+    test('is empty for an unknown house', () => {
+      assert.deepEqual(getHouseAssetPaths(db, 999), []);
     });
   });
 
@@ -311,6 +334,55 @@ describe('houseImages', () => {
       // The whole point: cleanup must never turn a successful request into a 500.
       deleteUploadedFiles([{ path: '/nonexistent/dir/file.jpg' }]);
       await settle();
+    });
+  });
+
+  describe('processAndStoreUploads', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kejahub-processupload-'));
+    after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+    function tempUpload(name, bytes = JPEG_1X1) {
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${name}`;
+      const filePath = path.join(dir, filename);
+      fs.writeFileSync(filePath, bytes);
+      return { path: filePath, filename };
+    }
+
+    test('returns an empty array for no files', async () => {
+      assert.deepEqual(await processAndStoreUploads(undefined), []);
+      assert.deepEqual(await processAndStoreUploads([]), []);
+    });
+
+    test('resizes, stores and removes the temp original for each file', async () => {
+      const files = [tempUpload('a.jpg'), tempUpload('b.jpg')];
+      const results = await processAndStoreUploads(files);
+
+      assert.equal(results.length, 2);
+      for (const r of results) {
+        assert.match(r.imagePath, /^\/uploads\/houses\/.+\.webp$/);
+        assert.match(r.thumbnailPath, /^\/uploads\/houses\/.+-thumb\.webp$/);
+        assert.ok(fs.existsSync(path.join(PROJECT_ROOT, '.' + r.imagePath)));
+        assert.ok(fs.existsSync(path.join(PROJECT_ROOT, '.' + r.thumbnailPath)));
+      }
+      for (const f of files) assert.equal(fs.existsSync(f.path), false);
+
+      for (const r of results) {
+        fs.rmSync(path.join(PROJECT_ROOT, '.' + r.imagePath), { force: true });
+        fs.rmSync(path.join(PROJECT_ROOT, '.' + r.thumbnailPath), { force: true });
+      }
+    });
+
+    test('rolls back already-stored outputs when a later file fails to process', async () => {
+      const good = tempUpload('good.jpg');
+      const bad = tempUpload('bad.jpg', Buffer.from('not an image'));
+
+      await assert.rejects(() => processAndStoreUploads([good, bad]));
+
+      // The good file's outputs must not be left behind after the rollback.
+      const leftover = fs
+        .readdirSync(UPLOAD_ROOT + '/houses')
+        .filter((name) => name.includes(path.basename(good.filename, '.jpg')));
+      assert.deepEqual(leftover, []);
     });
   });
 });

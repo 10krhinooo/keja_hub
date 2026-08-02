@@ -5,7 +5,8 @@ const {
   MAX_IMAGES_PER_HOUSE,
   deleteImageFiles,
   deleteUploadedFiles,
-  getHouseImagePaths,
+  processAndStoreUploads,
+  getHouseAssetPaths,
   getHouseImages,
   normalizePrimary,
   applyImageOrder,
@@ -16,7 +17,9 @@ const {
 // falling back to sort order keeps thumbnails from silently going blank.
 const PRIMARY_IMAGE_SQL = `
   (SELECT image_path FROM house_images WHERE house_id = h.id
-     ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image`;
+     ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
+  (SELECT thumbnail_path FROM house_images WHERE house_id = h.id
+     ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_thumbnail`;
 
 function parseIdList(value) {
   if (value === undefined || value === null) return [];
@@ -59,7 +62,7 @@ function renderAddHouse(res, { error = null, values = {} } = {}) {
 
 const showAddHouse = (req, res) => renderAddHouse(res);
 
-const addHouse = (req, res) => {
+const addHouse = async (req, res) => {
   try {
     const { errors, values } = validateHouseInput(req.body);
 
@@ -75,6 +78,11 @@ const addHouse = (req, res) => {
       deleteUploadedFiles(req.files);
       return renderAddHouse(res, { error: errors.join(' '), values: req.body });
     }
+
+    // Resizes, re-encodes and stores every upload before the DB transaction,
+    // since that work is async and better-sqlite3 transactions must be
+    // synchronous.
+    const uploaded = await processAndStoreUploads(req.files);
 
     const db = getDB();
 
@@ -101,10 +109,11 @@ const addHouse = (req, res) => {
       values.amenities.forEach((name) => insertAmenity.run(houseId, name));
 
       const insertImage = db.prepare(
-        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, ?, ?)`
+        `INSERT INTO house_images (house_id, image_path, thumbnail_path, is_primary, sort_order)
+         VALUES (?, ?, ?, ?, ?)`
       );
-      (req.files || []).forEach((file, index) => {
-        insertImage.run(houseId, '/uploads/houses/' + file.filename, index === 0 ? 1 : 0, index);
+      uploaded.forEach((img, index) => {
+        insertImage.run(houseId, img.imagePath, img.thumbnailPath, index === 0 ? 1 : 0, index);
       });
 
       return houseId;
@@ -229,7 +238,7 @@ const showEditHouse = (req, res) => {
   }
 };
 
-const editHouse = (req, res) => {
+const editHouse = async (req, res) => {
   const db = getDB();
   let house = null;
 
@@ -283,6 +292,11 @@ const editHouse = (req, res) => {
     // except on a rejected listing, where saving counts as a resubmission.
     const nextStatus = house.status === 'rejected' ? 'pending' : house.status;
 
+    // Resizes, re-encodes and stores every new upload before the DB
+    // transaction, since that work is async and better-sqlite3 transactions
+    // must be synchronous.
+    const uploaded = await processAndStoreUploads(req.files);
+
     let removedPaths = [];
 
     // A throw partway through (e.g. mid photo-reorder) must not leave the
@@ -311,10 +325,12 @@ const editHouse = (req, res) => {
         const placeholders = toDelete.map(() => '?').join(',');
         removedPaths = db
           .prepare(
-            `SELECT image_path FROM house_images WHERE house_id = ? AND id IN (${placeholders})`
+            `SELECT image_path, thumbnail_path FROM house_images
+             WHERE house_id = ? AND id IN (${placeholders})`
           )
           .all(houseId, ...toDelete)
-          .map((row) => row.image_path);
+          .flatMap((row) => [row.image_path, row.thumbnail_path])
+          .filter(Boolean);
 
         db.prepare(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`).run(
           houseId,
@@ -324,10 +340,11 @@ const editHouse = (req, res) => {
 
       let order = nextSortOrder(db, houseId);
       const insertImage = db.prepare(
-        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, 0, ?)`
+        `INSERT INTO house_images (house_id, image_path, thumbnail_path, is_primary, sort_order)
+         VALUES (?, ?, ?, 0, ?)`
       );
-      (req.files || []).forEach((file) => {
-        insertImage.run(houseId, '/uploads/houses/' + file.filename, order++);
+      uploaded.forEach((img) => {
+        insertImage.run(houseId, img.imagePath, img.thumbnailPath, order++);
       });
 
       applyImageOrder(
@@ -368,7 +385,7 @@ const deleteHouse = (req, res) => {
     const owned = findOwnedHouse(db, houseId, req.session.user.id);
     if (!owned) return res.redirect('/landlord/dashboard?error=listing_not_found');
 
-    const imgPaths = getHouseImagePaths(db, houseId);
+    const imgPaths = getHouseAssetPaths(db, houseId);
 
     const deleteAll = db.transaction(() => {
       db.prepare(`DELETE FROM bookings     WHERE house_id = ?`).run(houseId);

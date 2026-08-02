@@ -1,12 +1,18 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+
+// Multer always needs somewhere on local disk to land a file before the
+// handler runs, regardless of which storage driver ultimately stores it.
+// Kept outside the project tree so it never gets served or committed by
+// accident.
+const TMP_DIR = path.join(os.tmpdir(), 'kejahub-uploads');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads/houses');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
+    cb(null, TMP_DIR);
   },
   filename: (req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);

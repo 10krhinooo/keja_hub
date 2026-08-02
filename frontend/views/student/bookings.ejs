@@ -24,7 +24,7 @@
         <% var b = bookings[i]; %>
         <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:16px;display:flex">
           <% if (b.primary_image) { %>
-            <img src="<%= b.primary_image %>" alt="House" style="width:140px;height:120px;object-fit:cover;flex-shrink:0">
+            <img src="<%= b.primary_thumbnail || b.primary_image %>" alt="House" style="width:140px;height:120px;object-fit:cover;flex-shrink:0">
           <% } else { %>
             <div style="width:140px;height:120px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:12px;flex-shrink:0">No Photo</div>
           <% } %>

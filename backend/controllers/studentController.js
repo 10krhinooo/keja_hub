@@ -10,6 +10,8 @@ const dashboard = (req, res) => {
       SELECT h.*,
         (SELECT image_path FROM house_images WHERE house_id=h.id
            ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
+        (SELECT thumbnail_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_thumbnail,
         (SELECT AVG(rating) FROM reviews WHERE house_id=h.id) as avg_rating,
         (SELECT COUNT(*) FROM reviews WHERE house_id=h.id) as review_count
       FROM houses h
@@ -119,6 +121,8 @@ const searchHouses = (req, res) => {
       SELECT h.*,
         (SELECT image_path FROM house_images WHERE house_id=h.id
            ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
+        (SELECT thumbnail_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_thumbnail,
         ROUND((SELECT AVG(rating) FROM reviews WHERE house_id=h.id), 1) as avg_rating,
         (SELECT COUNT(*) FROM reviews WHERE house_id=h.id) as review_count
       FROM houses h
@@ -261,7 +265,9 @@ const myBookings = (req, res) => {
         `
       SELECT b.*, h.title as house_title, h.location, h.rent,
         (SELECT image_path FROM house_images WHERE house_id=h.id
-           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_image,
+        (SELECT thumbnail_path FROM house_images WHERE house_id=h.id
+           ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1) as primary_thumbnail
       FROM bookings b JOIN houses h ON b.house_id = h.id
       WHERE b.student_id = ?
       ORDER BY b.created_at DESC

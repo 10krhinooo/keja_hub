@@ -1,34 +1,54 @@
 const fs = require('fs');
 const path = require('path');
+const storage = require('../storage');
+const { processImage } = require('./imageProcessing');
 
 const MAX_IMAGES_PER_HOUSE = 10;
-const PROJECT_ROOT = path.join(__dirname, '../../');
-const UPLOAD_ROOT = path.join(PROJECT_ROOT, 'uploads');
 
-// Only ever unlink files that resolve inside uploads/. Seeded listings point at
-// /images/background.jpg (a static asset), and image_path ultimately comes from
-// the database, so refuse anything that escapes the upload directory.
-function resolveUploadPath(imagePath) {
-  if (!imagePath) return null;
-  const abs = path.resolve(PROJECT_ROOT, '.' + imagePath);
-  return abs.startsWith(UPLOAD_ROOT + path.sep) ? abs : null;
-}
-
-// Fire-and-forget: a failed unlink leaves an orphan file, which must never
-// block or fail the request that removed the database row.
+// Fire-and-forget: a failed delete leaves an orphan file, which must never
+// block or fail the request that removed the database row. Delegates to the
+// active storage driver, so this works the same for local and s3.
 function deleteImageFiles(imagePaths) {
   for (const imagePath of imagePaths || []) {
-    const abs = resolveUploadPath(imagePath);
-    if (!abs) continue;
-    fs.promises.unlink(abs).catch(() => {});
+    if (!imagePath) continue;
+    storage.remove(imagePath);
   }
 }
 
-// Multer writes uploads to disk before the handler runs, so every early return
-// (validation failure, over-cap, ownership rejection) must clean up after itself.
+// Multer writes uploads to a local temp dir before the handler runs, so every
+// early return (validation failure, over-cap, ownership rejection) must clean
+// up after itself, regardless of which storage driver will ultimately be used.
 function deleteUploadedFiles(files) {
   for (const file of files || []) {
     fs.promises.unlink(file.path).catch(() => {});
+  }
+}
+
+// Resizes and re-encodes each multer temp file (strip EXIF, cap the long edge,
+// webp @ q80, plus a thumbnail), stores both through the active driver, then
+// removes the temp original. Runs before the DB transaction that records the
+// resulting paths, since storing is async and better-sqlite3 transactions must
+// be synchronous.
+async function processAndStoreUploads(files) {
+  const results = [];
+  try {
+    for (const file of files || []) {
+      const { main, thumbnail } = await processImage(file.path);
+      const base = path.basename(file.filename, path.extname(file.filename));
+      const imagePath = await storage.put(main, `${base}.webp`);
+      const thumbnailPath = await storage.put(thumbnail, `${base}-thumb.webp`);
+      await fs.promises.unlink(file.path).catch(() => {});
+      results.push({ imagePath, thumbnailPath });
+    }
+    return results;
+  } catch (err) {
+    // Roll back anything already stored in this batch; the caller's
+    // deleteUploadedFiles(req.files) handles the remaining temp originals.
+    for (const stored of results) {
+      storage.remove(stored.imagePath);
+      storage.remove(stored.thumbnailPath);
+    }
+    throw err;
   }
 }
 
@@ -37,6 +57,16 @@ function getHouseImagePaths(db, houseId) {
     .prepare(`SELECT image_path FROM house_images WHERE house_id = ?`)
     .all(houseId)
     .map((row) => row.image_path);
+}
+
+// Every stored asset (main + thumbnail) for a house's gallery, for cleanup
+// on delete. Unlike getHouseImagePaths, this includes thumbnails.
+function getHouseAssetPaths(db, houseId) {
+  return db
+    .prepare(`SELECT image_path, thumbnail_path FROM house_images WHERE house_id = ?`)
+    .all(houseId)
+    .flatMap((row) => [row.image_path, row.thumbnail_path])
+    .filter(Boolean);
 }
 
 function getHouseImages(db, houseId) {
@@ -105,7 +135,9 @@ module.exports = {
   MAX_IMAGES_PER_HOUSE,
   deleteImageFiles,
   deleteUploadedFiles,
+  processAndStoreUploads,
   getHouseImagePaths,
+  getHouseAssetPaths,
   getHouseImages,
   normalizePrimary,
   applyImageOrder,
