@@ -22,6 +22,7 @@
   "description": "Student housing platform",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.2",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
@@ -30,8 +31,7 @@
     "helmet": "^8.3.0",
     "multer": "^2.1.1",
     "nodemailer": "^9.0.3",
-    "session-file-store": "^1.5.0",
-    "sql.js": "^1.14.1"
+    "session-file-store": "^1.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

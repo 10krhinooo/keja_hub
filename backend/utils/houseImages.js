@@ -33,23 +33,16 @@ function deleteUploadedFiles(files) {
 }
 
 function getHouseImagePaths(db, houseId) {
-  const stmt = db.prepare(`SELECT image_path FROM house_images WHERE house_id = ?`);
-  stmt.bind([houseId]);
-  const paths = [];
-  while (stmt.step()) paths.push(stmt.getAsObject().image_path);
-  stmt.free();
-  return paths;
+  return db
+    .prepare(`SELECT image_path FROM house_images WHERE house_id = ?`)
+    .all(houseId)
+    .map((row) => row.image_path);
 }
 
 function getHouseImages(db, houseId) {
-  const stmt = db.prepare(
-    `SELECT * FROM house_images WHERE house_id = ? ORDER BY sort_order ASC, id ASC`
-  );
-  stmt.bind([houseId]);
-  const images = [];
-  while (stmt.step()) images.push(stmt.getAsObject());
-  stmt.free();
-  return images;
+  return db
+    .prepare(`SELECT * FROM house_images WHERE house_id = ? ORDER BY sort_order ASC, id ASC`)
+    .all(houseId);
 }
 
 // Guarantees exactly one primary image. Called after any delete/insert/reorder so
@@ -61,11 +54,11 @@ function normalizePrimary(db, houseId, preferredImageId) {
   let target = images.find((img) => img.id === preferredImageId);
   if (!target) target = images.find((img) => img.is_primary) || images[0];
 
-  db.run(`UPDATE house_images SET is_primary = 0 WHERE house_id = ?`, [houseId]);
-  db.run(`UPDATE house_images SET is_primary = 1 WHERE id = ? AND house_id = ?`, [
+  db.prepare(`UPDATE house_images SET is_primary = 0 WHERE house_id = ?`).run(houseId);
+  db.prepare(`UPDATE house_images SET is_primary = 1 WHERE id = ? AND house_id = ?`).run(
     target.id,
-    houseId,
-  ]);
+    houseId
+  );
 }
 
 // Applies a client-supplied display order. Ids not belonging to this house are
@@ -76,47 +69,36 @@ function applyImageOrder(db, houseId, orderedIds) {
   const owned = new Set(getHouseImages(db, houseId).map((img) => img.id));
   const seen = new Set();
   let position = 0;
+  const setOrder = db.prepare(
+    `UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`
+  );
 
   for (const rawId of orderedIds) {
     const id = parseInt(rawId, 10);
     if (isNaN(id) || !owned.has(id) || seen.has(id)) continue;
     seen.add(id);
-    db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [
-      position++,
-      id,
-      houseId,
-    ]);
+    setOrder.run(position++, id, houseId);
   }
 
   for (const id of owned) {
     if (!seen.has(id)) {
-      db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [
-        position++,
-        id,
-        houseId,
-      ]);
+      setOrder.run(position++, id, houseId);
     }
   }
 }
 
 function nextSortOrder(db, houseId) {
-  const stmt = db.prepare(
-    `SELECT MAX(sort_order) as max_order FROM house_images WHERE house_id = ?`
-  );
-  stmt.bind([houseId]);
-  stmt.step();
-  const max = stmt.getAsObject().max_order;
-  stmt.free();
-  return max === null || max === undefined ? 0 : max + 1;
+  const { max_order } = db
+    .prepare(`SELECT MAX(sort_order) as max_order FROM house_images WHERE house_id = ?`)
+    .get(houseId);
+  return max_order === null || max_order === undefined ? 0 : max_order + 1;
 }
 
 function countHouseImages(db, houseId) {
-  const stmt = db.prepare(`SELECT COUNT(*) as cnt FROM house_images WHERE house_id = ?`);
-  stmt.bind([houseId]);
-  stmt.step();
-  const cnt = stmt.getAsObject().cnt || 0;
-  stmt.free();
-  return cnt;
+  const { cnt } = db
+    .prepare(`SELECT COUNT(*) as cnt FROM house_images WHERE house_id = ?`)
+    .get(houseId);
+  return cnt || 0;
 }
 
 module.exports = {

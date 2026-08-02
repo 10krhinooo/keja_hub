@@ -1,4 +1,4 @@
-const initSqlJs = require('sql.js');
+const Database = require('better-sqlite3');
 
 /**
  * A bare in-memory database with just the tables a unit test needs. Much
@@ -6,10 +6,9 @@ const initSqlJs = require('sql.js');
  * exact rows under test.
  */
 async function memoryDb() {
-  const SQL = await initSqlJs();
-  const db = new SQL.Database();
+  const db = new Database(':memory:');
 
-  db.run(`CREATE TABLE house_images (
+  db.exec(`CREATE TABLE house_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     house_id INTEGER NOT NULL,
     image_path TEXT NOT NULL,
@@ -17,7 +16,7 @@ async function memoryDb() {
     sort_order INTEGER DEFAULT 0
   )`);
 
-  db.run(`CREATE TABLE users (
+  db.exec(`CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT, email TEXT, password TEXT, role TEXT,
     is_active INTEGER DEFAULT 1
@@ -28,6 +27,9 @@ async function memoryDb() {
 
 // Inserts images for a house and returns their ids in insertion order.
 function addImages(db, houseId, specs) {
+  const insert = db.prepare(
+    `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?,?,?,?)`
+  );
   const ids = [];
   for (const spec of specs) {
     const {
@@ -35,25 +37,19 @@ function addImages(db, houseId, specs) {
       primary = 0,
       order = 0,
     } = spec;
-    db.run(
-      `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?,?,?,?)`,
-      [houseId, imagePath, primary, order]
-    );
-    ids.push(db.exec('SELECT last_insert_rowid() as id')[0].values[0][0]);
+    const { lastInsertRowid } = insert.run(houseId, imagePath, primary, order);
+    ids.push(lastInsertRowid);
   }
   return ids;
 }
 
 function readImages(db, houseId) {
-  const stmt = db.prepare(
-    `SELECT id, image_path, is_primary, sort_order FROM house_images
-     WHERE house_id = ? ORDER BY sort_order ASC, id ASC`
-  );
-  stmt.bind([houseId]);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  return rows;
+  return db
+    .prepare(
+      `SELECT id, image_path, is_primary, sort_order FROM house_images
+       WHERE house_id = ? ORDER BY sort_order ASC, id ASC`
+    )
+    .all(houseId);
 }
 
 module.exports = { memoryDb, addImages, readImages };

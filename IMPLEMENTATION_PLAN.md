@@ -8,8 +8,8 @@
 | 1. Tests to 90%                             | Done, 93.97% lines / 84.61% branches | PR #2     |
 | 2. CI pipeline with the coverage gate       | Done                                 | PR #2     |
 | 3. ESLint and Prettier                      | Done                                 | PR #2     |
-| 4. Drop `unsafe-inline` from the script CSP | Not started                          |           |
-| 5. sql.js to better-sqlite3                 | Not started                          |           |
+| 4. Drop `unsafe-inline` from the script CSP | Done                                 | PR #3     |
+| 5. sql.js to better-sqlite3                 | Done                                 | PR #4     |
 | 6. Object storage and image resizing        | Not started                          |           |
 | 7. Remaining section 11 items               | Not started                          |           |
 

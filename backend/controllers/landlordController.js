@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, getDistinctLocations } = require('../database');
+const { getDB, getDistinctLocations } = require('../database');
 const { AMENITY_OPTIONS, validateHouseInput } = require('../utils/validateHouse');
 const {
   MAX_IMAGES_PER_HOUSE,
@@ -27,7 +27,9 @@ function parseIdList(value) {
 const dashboard = (req, res) => {
   try {
     const db = getDB();
-    const stmt = db.prepare(`
+    const houses = db
+      .prepare(
+        `
       SELECT h.*, COUNT(b.id) as booking_count,
         ${PRIMARY_IMAGE_SQL}
       FROM houses h
@@ -35,11 +37,9 @@ const dashboard = (req, res) => {
       WHERE h.landlord_id = ?
       GROUP BY h.id
       ORDER BY h.created_at DESC
-    `);
-    stmt.bind([req.session.user.id]);
-    const houses = [];
-    while (stmt.step()) houses.push(stmt.getAsObject());
-    stmt.free();
+    `
+      )
+      .all(req.session.user.id);
     res.render('landlord/dashboard', { houses, query: req.query });
   } catch (err) {
     console.error('Landlord dashboard error:', err);
@@ -78,35 +78,39 @@ const addHouse = (req, res) => {
 
     const db = getDB();
 
-    db.run(
-      `INSERT INTO houses (landlord_id, title, description, rent, location, estate, bedrooms, bathrooms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        req.session.user.id,
-        values.title,
-        values.description,
-        values.rent,
-        values.location,
-        values.estate || null,
-        values.bedrooms,
-        values.bathrooms,
-      ]
-    );
+    // A throw partway through (e.g. a bad amenity insert) must not leave a
+    // house row with no amenities or photos attached.
+    const insertListing = db.transaction(() => {
+      const { lastInsertRowid: houseId } = db
+        .prepare(
+          `INSERT INTO houses (landlord_id, title, description, rent, location, estate, bedrooms, bathrooms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          req.session.user.id,
+          values.title,
+          values.description,
+          values.rent,
+          values.location,
+          values.estate || null,
+          values.bedrooms,
+          values.bathrooms
+        );
 
-    const houseId = db.exec('SELECT last_insert_rowid() as id')[0].values[0][0];
+      const insertAmenity = db.prepare(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`);
+      values.amenities.forEach((name) => insertAmenity.run(houseId, name));
 
-    values.amenities.forEach((name) => {
-      db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
-    });
-
-    (req.files || []).forEach((file, index) => {
-      db.run(
-        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, ?, ?)`,
-        [houseId, '/uploads/houses/' + file.filename, index === 0 ? 1 : 0, index]
+      const insertImage = db.prepare(
+        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, ?, ?)`
       );
+      (req.files || []).forEach((file, index) => {
+        insertImage.run(houseId, '/uploads/houses/' + file.filename, index === 0 ? 1 : 0, index);
+      });
+
+      return houseId;
     });
 
-    saveDB();
+    insertListing();
     res.redirect('/landlord/dashboard?success=listing_submitted');
   } catch (err) {
     console.error('Add house error:', err);
@@ -126,30 +130,25 @@ const showHouse = (req, res) => {
 
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`);
-    houseStmt.bind([houseId, req.session.user.id]);
-    const house = houseStmt.step() ? houseStmt.getAsObject() : null;
-    houseStmt.free();
+    const house = db
+      .prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`)
+      .get(houseId, req.session.user.id);
     if (!house) return res.redirect('/landlord/dashboard?error=listing_not_found');
 
     const images = getHouseImages(db, houseId);
 
-    const amenStmt = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`);
-    amenStmt.bind([houseId]);
-    const amenities = [];
-    while (amenStmt.step()) amenities.push(amenStmt.getAsObject());
-    amenStmt.free();
+    const amenities = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`).all(houseId);
 
-    const bookStmt = db.prepare(`
+    const bookings = db
+      .prepare(
+        `
       SELECT b.*, u.name as student_name, u.email as student_email
       FROM bookings b JOIN users u ON b.student_id = u.id
       WHERE b.house_id = ?
       ORDER BY b.created_at DESC
-    `);
-    bookStmt.bind([houseId]);
-    const bookings = [];
-    while (bookStmt.step()) bookings.push(bookStmt.getAsObject());
-    bookStmt.free();
+    `
+      )
+      .all(houseId);
 
     res.render('landlord/house-detail', { house, images, amenities, bookings, query: req.query });
   } catch (err) {
@@ -175,18 +174,15 @@ const updateBooking = (req, res) => {
 
     const db = getDB();
 
-    const bStmt = db.prepare(
-      `SELECT house_id FROM bookings WHERE id = ? AND house_id IN (SELECT id FROM houses WHERE landlord_id = ?)`
-    );
-    bStmt.bind([bookingId, req.session.user.id]);
-    const found = bStmt.step();
-    const { house_id } = found ? bStmt.getAsObject() : {};
-    bStmt.free();
-    if (!house_id) return goBack('booking_not_found');
+    const found = db
+      .prepare(
+        `SELECT house_id FROM bookings WHERE id = ? AND house_id IN (SELECT id FROM houses WHERE landlord_id = ?)`
+      )
+      .get(bookingId, req.session.user.id);
+    if (!found) return goBack('booking_not_found');
 
-    db.run(`UPDATE bookings SET status = ? WHERE id = ?`, [status, bookingId]);
-    saveDB();
-    res.redirect(`/landlord/house/${house_id}?success=booking_${status}`);
+    db.prepare(`UPDATE bookings SET status = ? WHERE id = ?`).run(status, bookingId);
+    res.redirect(`/landlord/house/${found.house_id}?success=booking_${status}`);
   } catch (err) {
     console.error('Update booking error:', err);
     res.status(500).send('Something went wrong. Please try again.');
@@ -194,20 +190,17 @@ const updateBooking = (req, res) => {
 };
 
 function findOwnedHouse(db, houseId, landlordId) {
-  const stmt = db.prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`);
-  stmt.bind([houseId, landlordId]);
-  const house = stmt.step() ? stmt.getAsObject() : null;
-  stmt.free();
-  return house;
+  return db
+    .prepare(`SELECT * FROM houses WHERE id = ? AND landlord_id = ?`)
+    .get(houseId, landlordId);
 }
 
 function renderEditHouse(res, db, house, { error = null, amenities, values } = {}) {
   if (!amenities) {
-    const stmt = db.prepare(`SELECT name FROM amenities WHERE house_id = ?`);
-    stmt.bind([house.id]);
-    amenities = [];
-    while (stmt.step()) amenities.push(stmt.getAsObject().name);
-    stmt.free();
+    amenities = db
+      .prepare(`SELECT name FROM amenities WHERE house_id = ?`)
+      .all(house.id)
+      .map((row) => row.name);
   }
   res.render('landlord/edit-house', {
     house: values ? { ...house, ...values } : house,
@@ -290,10 +283,15 @@ const editHouse = (req, res) => {
     // except on a rejected listing, where saving counts as a resubmission.
     const nextStatus = house.status === 'rejected' ? 'pending' : house.status;
 
-    db.run(
-      `UPDATE houses SET title=?, description=?, rent=?, location=?, estate=?, bedrooms=?, bathrooms=?,
-       status=?, rejection_reason=NULL WHERE id=?`,
-      [
+    let removedPaths = [];
+
+    // A throw partway through (e.g. mid photo-reorder) must not leave the
+    // listing row updated but its amenities or photos half-written.
+    const applyEdit = db.transaction(() => {
+      db.prepare(
+        `UPDATE houses SET title=?, description=?, rent=?, location=?, estate=?, bedrooms=?, bathrooms=?,
+       status=?, rejection_reason=NULL WHERE id=?`
+      ).run(
         values.title,
         values.description,
         values.rent,
@@ -302,48 +300,46 @@ const editHouse = (req, res) => {
         values.bedrooms,
         values.bathrooms,
         nextStatus,
-        houseId,
-      ]
-    );
+        houseId
+      );
 
-    db.run(`DELETE FROM amenities WHERE house_id = ?`, [houseId]);
-    values.amenities.forEach((name) => {
-      db.run(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`, [houseId, name]);
+      db.prepare(`DELETE FROM amenities WHERE house_id = ?`).run(houseId);
+      const insertAmenity = db.prepare(`INSERT INTO amenities (house_id, name) VALUES (?, ?)`);
+      values.amenities.forEach((name) => insertAmenity.run(houseId, name));
+
+      if (toDelete.length) {
+        const placeholders = toDelete.map(() => '?').join(',');
+        removedPaths = db
+          .prepare(
+            `SELECT image_path FROM house_images WHERE house_id = ? AND id IN (${placeholders})`
+          )
+          .all(houseId, ...toDelete)
+          .map((row) => row.image_path);
+
+        db.prepare(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`).run(
+          houseId,
+          ...toDelete
+        );
+      }
+
+      let order = nextSortOrder(db, houseId);
+      const insertImage = db.prepare(
+        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, 0, ?)`
+      );
+      (req.files || []).forEach((file) => {
+        insertImage.run(houseId, '/uploads/houses/' + file.filename, order++);
+      });
+
+      applyImageOrder(
+        db,
+        houseId,
+        parseIdList(req.body.image_order).filter((id) => !toDelete.includes(id))
+      );
+      normalizePrimary(db, houseId, parseInt(req.body.primary_image, 10));
     });
 
-    if (toDelete.length) {
-      const placeholders = toDelete.map(() => '?').join(',');
-      const pathStmt = db.prepare(
-        `SELECT image_path FROM house_images WHERE house_id = ? AND id IN (${placeholders})`
-      );
-      pathStmt.bind([houseId, ...toDelete]);
-      const removedPaths = [];
-      while (pathStmt.step()) removedPaths.push(pathStmt.getAsObject().image_path);
-      pathStmt.free();
-
-      db.run(`DELETE FROM house_images WHERE house_id = ? AND id IN (${placeholders})`, [
-        houseId,
-        ...toDelete,
-      ]);
-      deleteImageFiles(removedPaths);
-    }
-
-    let order = nextSortOrder(db, houseId);
-    (req.files || []).forEach((file) => {
-      db.run(
-        `INSERT INTO house_images (house_id, image_path, is_primary, sort_order) VALUES (?, ?, 0, ?)`,
-        [houseId, '/uploads/houses/' + file.filename, order++]
-      );
-    });
-
-    applyImageOrder(
-      db,
-      houseId,
-      parseIdList(req.body.image_order).filter((id) => !toDelete.includes(id))
-    );
-    normalizePrimary(db, houseId, parseInt(req.body.primary_image, 10));
-
-    saveDB();
+    applyEdit();
+    deleteImageFiles(removedPaths);
 
     const success =
       nextStatus === 'pending' && house.status === 'rejected'
@@ -374,13 +370,15 @@ const deleteHouse = (req, res) => {
 
     const imgPaths = getHouseImagePaths(db, houseId);
 
-    db.run(`DELETE FROM bookings     WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM reviews      WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM reports      WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM amenities    WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM house_images WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM houses       WHERE id = ?`, [houseId]);
-    saveDB();
+    const deleteAll = db.transaction(() => {
+      db.prepare(`DELETE FROM bookings     WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM reviews      WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM reports      WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM amenities    WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM house_images WHERE house_id = ?`).run(houseId);
+      db.prepare(`DELETE FROM houses       WHERE id = ?`).run(houseId);
+    });
+    deleteAll();
 
     deleteImageFiles(imgPaths);
 
@@ -394,10 +392,9 @@ const deleteHouse = (req, res) => {
 const showProfile = (req, res) => {
   try {
     const db = getDB();
-    const profStmt = db.prepare(`SELECT * FROM landlord_profiles WHERE user_id = ?`);
-    profStmt.bind([req.session.user.id]);
-    const profile = profStmt.step() ? profStmt.getAsObject() : {};
-    profStmt.free();
+    const profile =
+      db.prepare(`SELECT * FROM landlord_profiles WHERE user_id = ?`).get(req.session.user.id) ||
+      {};
     res.render('landlord/profile', { profile, query: req.query });
   } catch (err) {
     console.error('Landlord profile error:', err);
@@ -411,15 +408,14 @@ const updateProfile = (req, res) => {
     const userId = req.session.user.id;
     const { name, phone, id_number } = req.body;
     if (name && name.trim()) {
-      db.run(`UPDATE users SET name = ? WHERE id = ?`, [name.trim(), userId]);
+      db.prepare(`UPDATE users SET name = ? WHERE id = ?`).run(name.trim(), userId);
       req.session.user = { ...req.session.user, name: name.trim() };
     }
-    db.run(`UPDATE landlord_profiles SET phone=?, id_number=? WHERE user_id=?`, [
+    db.prepare(`UPDATE landlord_profiles SET phone=?, id_number=? WHERE user_id=?`).run(
       phone || '',
       id_number || '',
-      userId,
-    ]);
-    saveDB();
+      userId
+    );
     res.redirect('/landlord/profile?success=profile_updated');
   } catch (err) {
     console.error('Update landlord profile error:', err);
@@ -435,16 +431,13 @@ const changePassword = async (req, res) => {
     if (!new_password || new_password.length < 8)
       return res.redirect('/landlord/profile?error=password_too_short');
     const db = getDB();
-    const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]);
-    s.step();
-    const { password: hash } = s.getAsObject();
-    s.free();
+    const { password: hash } = db
+      .prepare(`SELECT password FROM users WHERE id = ?`)
+      .get(req.session.user.id);
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/landlord/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
-    db.run(`UPDATE users SET password = ? WHERE id = ?`, [newHash, req.session.user.id]);
-    saveDB();
+    db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/landlord/profile?success=password_changed');
   } catch (err) {
     console.error('Change landlord password error:', err);
