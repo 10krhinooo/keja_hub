@@ -191,7 +191,7 @@ const viewHouse = (req, res) => {
       db
         .prepare(
           `
-      SELECT u.name, lp.phone
+      SELECT u.name, lp.phone, lp.is_verified
       FROM users u
       LEFT JOIN landlord_profiles lp ON u.id = lp.user_id
       WHERE u.id = ?

@@ -11,6 +11,7 @@ const {
   deleteHouse,
   manageUsers,
   toggleUser,
+  toggleVerified,
   manageReports,
   resolveReport,
   allBookings,
@@ -30,6 +31,7 @@ router.post('/house/:id/reject', rejectHouse);
 router.post('/house/:id/delete', deleteHouse);
 router.get('/users', manageUsers);
 router.post('/users/:id/toggle', toggleUser);
+router.post('/users/:id/verify', toggleVerified);
 router.get('/reports', manageReports);
 router.post('/reports/:id/resolve', resolveReport);
 router.get('/bookings', allBookings);

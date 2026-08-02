@@ -308,15 +308,20 @@ const manageUsers = (req, res) => {
     const keyword = (req.query.keyword || '').trim();
 
     const buildQuery = (role) => {
-      const conds = [`role = ?`];
+      const conds = [`u.role = ?`];
       const params = [role];
       if (keyword) {
-        conds.push(`(name LIKE ? OR email LIKE ?)`);
+        conds.push(`(u.name LIKE ? OR u.email LIKE ?)`);
         const kw = `%${keyword}%`;
         params.push(kw, kw);
       }
       return db
-        .prepare(`SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`)
+        .prepare(
+          `SELECT u.*, lp.is_verified
+           FROM users u
+           LEFT JOIN landlord_profiles lp ON lp.user_id = u.id
+           WHERE ${conds.join(' AND ')} ORDER BY u.created_at DESC`
+        )
         .all(...params);
     };
 
@@ -341,6 +346,26 @@ const toggleUser = (req, res) => {
     res.redirect('/admin/users');
   } catch (err) {
     console.error('Toggle user error:', err);
+    res.status(500).send('Something went wrong. Please try again.');
+  }
+};
+
+const toggleVerified = (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (isNaN(userId)) return res.redirect('/admin/users');
+    const db = getDB();
+    const profile = db
+      .prepare(`SELECT is_verified FROM landlord_profiles WHERE user_id = ?`)
+      .get(userId);
+    if (!profile) return res.redirect('/admin/users');
+    db.prepare(`UPDATE landlord_profiles SET is_verified = ? WHERE user_id = ?`).run(
+      profile.is_verified ? 0 : 1,
+      userId
+    );
+    res.redirect('/admin/users');
+  } catch (err) {
+    console.error('Toggle verified error:', err);
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -490,6 +515,7 @@ module.exports = {
   deleteHouse,
   manageUsers,
   toggleUser,
+  toggleVerified,
   manageReports,
   resolveReport,
   allBookings,
