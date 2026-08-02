@@ -58,11 +58,14 @@ function normalizePrimary(db, houseId, preferredImageId) {
   const images = getHouseImages(db, houseId);
   if (images.length === 0) return;
 
-  let target = images.find(img => img.id === preferredImageId);
-  if (!target) target = images.find(img => img.is_primary) || images[0];
+  let target = images.find((img) => img.id === preferredImageId);
+  if (!target) target = images.find((img) => img.is_primary) || images[0];
 
   db.run(`UPDATE house_images SET is_primary = 0 WHERE house_id = ?`, [houseId]);
-  db.run(`UPDATE house_images SET is_primary = 1 WHERE id = ? AND house_id = ?`, [target.id, houseId]);
+  db.run(`UPDATE house_images SET is_primary = 1 WHERE id = ? AND house_id = ?`, [
+    target.id,
+    houseId,
+  ]);
 }
 
 // Applies a client-supplied display order. Ids not belonging to this house are
@@ -70,7 +73,7 @@ function normalizePrimary(db, houseId, preferredImageId) {
 function applyImageOrder(db, houseId, orderedIds) {
   if (!Array.isArray(orderedIds) || orderedIds.length === 0) return;
 
-  const owned = new Set(getHouseImages(db, houseId).map(img => img.id));
+  const owned = new Set(getHouseImages(db, houseId).map((img) => img.id));
   const seen = new Set();
   let position = 0;
 
@@ -78,23 +81,33 @@ function applyImageOrder(db, houseId, orderedIds) {
     const id = parseInt(rawId, 10);
     if (isNaN(id) || !owned.has(id) || seen.has(id)) continue;
     seen.add(id);
-    db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [position++, id, houseId]);
+    db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [
+      position++,
+      id,
+      houseId,
+    ]);
   }
 
   for (const id of owned) {
     if (!seen.has(id)) {
-      db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [position++, id, houseId]);
+      db.run(`UPDATE house_images SET sort_order = ? WHERE id = ? AND house_id = ?`, [
+        position++,
+        id,
+        houseId,
+      ]);
     }
   }
 }
 
 function nextSortOrder(db, houseId) {
-  const stmt = db.prepare(`SELECT MAX(sort_order) as max_order FROM house_images WHERE house_id = ?`);
+  const stmt = db.prepare(
+    `SELECT MAX(sort_order) as max_order FROM house_images WHERE house_id = ?`
+  );
   stmt.bind([houseId]);
   stmt.step();
   const max = stmt.getAsObject().max_order;
   stmt.free();
-  return (max === null || max === undefined) ? 0 : max + 1;
+  return max === null || max === undefined ? 0 : max + 1;
 }
 
 function countHouseImages(db, houseId) {

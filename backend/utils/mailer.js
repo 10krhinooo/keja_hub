@@ -39,24 +39,28 @@ function isConfigured() {
 
 const PALETTE = {
   forest: '#1B4332',
-  moss:   '#2D6A4F',
-  leaf:   '#52B788',
-  cream:  '#FFFDF5',
-  mist:   '#EEF5F0',
-  ink:    '#1A1A1A',
-  slate:  '#3D4F47',
-  quiet:  '#7A9088',
+  moss: '#2D6A4F',
+  leaf: '#52B788',
+  cream: '#FFFDF5',
+  mist: '#EEF5F0',
+  ink: '#1A1A1A',
+  slate: '#3D4F47',
+  quiet: '#7A9088',
   border: '#D4E6DB',
 };
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function renderTemplate({ heading, intro, bodyHtml = '', ctaLabel, ctaUrl, footnote }) {
-  const button = ctaUrl ? `
+  const button = ctaUrl
+    ? `
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0">
       <tr><td style="border-radius:8px;background:${PALETTE.forest}">
         <a href="${escapeHtml(ctaUrl)}"
@@ -65,7 +69,8 @@ function renderTemplate({ heading, intro, bodyHtml = '', ctaLabel, ctaUrl, footn
           ${escapeHtml(ctaLabel || 'Continue')}
         </a>
       </td></tr>
-    </table>` : '';
+    </table>`
+    : '';
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -90,8 +95,12 @@ function renderTemplate({ heading, intro, bodyHtml = '', ctaLabel, ctaUrl, footn
                     line-height:1.6;color:${PALETTE.slate}">${escapeHtml(intro)}</p>
           ${bodyHtml}
           ${button}
-          ${footnote ? `<p style="margin:22px 0 0;font-family:Inter,Helvetica,Arial,sans-serif;font-size:13px;
-                                   line-height:1.6;color:${PALETTE.quiet}">${escapeHtml(footnote)}</p>` : ''}
+          ${
+            footnote
+              ? `<p style="margin:22px 0 0;font-family:Inter,Helvetica,Arial,sans-serif;font-size:13px;
+                                   line-height:1.6;color:${PALETTE.quiet}">${escapeHtml(footnote)}</p>`
+              : ''
+          }
         </td></tr>
 
         <tr><td style="padding:18px 32px;background:${PALETTE.mist};border-top:1px solid ${PALETTE.border}">
@@ -107,13 +116,25 @@ function renderTemplate({ heading, intro, bodyHtml = '', ctaLabel, ctaUrl, footn
 </body></html>`;
 }
 
-async function sendMail({ to, subject, heading, intro, bodyHtml, ctaLabel, ctaUrl, footnote, text }) {
+async function sendMail({
+  to,
+  subject,
+  heading,
+  intro,
+  bodyHtml,
+  ctaLabel,
+  ctaUrl,
+  footnote,
+  text,
+}) {
   const html = renderTemplate({ heading, intro, bodyHtml, ctaLabel, ctaUrl, footnote });
   const plain = text || [intro, ctaUrl, footnote].filter(Boolean).join('\n\n');
   const transport = getTransporter();
 
   if (!transport) {
-    console.log(`[email:not-configured] To: ${to} | ${subject}\n${plain}\n`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[email:not-configured] To: ${to} | ${subject}\n${plain}\n`);
+    }
     return { delivered: false, reason: 'not_configured' };
   }
 
@@ -132,11 +153,27 @@ function sendPasswordResetEmail(to, resetUrl) {
     to,
     subject: 'Reset your KejaHub password',
     heading: 'Reset your password',
-    intro: 'We received a request to reset the password on your KejaHub account. Click the button below to choose a new one.',
+    intro:
+      'We received a request to reset the password on your KejaHub account. Click the button below to choose a new one.',
     ctaLabel: 'Choose a new password',
     ctaUrl: resetUrl,
-    footnote: 'This link expires in 1 hour and can only be used once. If you did not request a reset, you can safely ignore this email. Your password will not change.',
+    footnote:
+      'This link expires in 1 hour and can only be used once. If you did not request a reset, you can safely ignore this email. Your password will not change.',
   });
 }
 
-module.exports = { sendMail, sendPasswordResetEmail, renderTemplate, isConfigured };
+// Test seam. Swapping in a collector transport lets a test assert on the reset
+// link that was actually mailed, rather than reaching for real SMTP. Passing
+// null restores the normal lazy lookup of SMTP_USER / SMTP_PASS.
+function __setTransport(fake) {
+  transporter = fake;
+  transportError = null;
+}
+
+module.exports = {
+  sendMail,
+  sendPasswordResetEmail,
+  renderTemplate,
+  isConfigured,
+  __setTransport,
+};

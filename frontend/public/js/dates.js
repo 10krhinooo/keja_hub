@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var d = new Date(raw + 'T00:00:00');
     if (isNaN(d)) return;
     el.textContent = d.toLocaleDateString('en-KE', {
-      year: 'numeric', month: 'short', day: 'numeric'
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   });
 });

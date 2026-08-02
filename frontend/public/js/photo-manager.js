@@ -27,12 +27,19 @@
       if (!counter) return;
       var remaining = maxNew - staged.length;
       if (maxNew <= 0) {
-        counter.textContent = 'This listing already has the maximum of 10 photos. Remove one to add another.';
+        counter.textContent =
+          'This listing already has the maximum of 10 photos. Remove one to add another.';
       } else if (staged.length === 0) {
-        counter.textContent = 'You can add up to ' + maxNew + ' more photo' + (maxNew === 1 ? '' : 's') + '.';
+        counter.textContent =
+          'You can add up to ' + maxNew + ' more photo' + (maxNew === 1 ? '' : 's') + '.';
       } else {
-        counter.textContent = staged.length + ' selected · room for ' +
-          remaining + ' more photo' + (remaining === 1 ? '' : 's') + '.';
+        counter.textContent =
+          staged.length +
+          ' selected · room for ' +
+          remaining +
+          ' more photo' +
+          (remaining === 1 ? '' : 's') +
+          '.';
       }
     }
 
@@ -40,7 +47,9 @@
     // the only way to drop an individual file before submitting.
     function syncInput() {
       var dt = new DataTransfer();
-      staged.forEach(function (file) { dt.items.add(file); });
+      staged.forEach(function (file) {
+        dt.items.add(file);
+      });
       input.files = dt.files;
       updateCounter();
     }
@@ -54,7 +63,9 @@
         var img = document.createElement('img');
         img.alt = file.name;
         var reader = new FileReader();
-        reader.onload = function (e) { img.src = e.target.result; };
+        reader.onload = function (e) {
+          img.src = e.target.result;
+        };
         reader.readAsDataURL(file);
 
         var remove = document.createElement('button');
@@ -97,8 +108,16 @@
       renderPreviews();
 
       if (rejected.length) {
-        notify('Skipped ' + rejected.length + ' file' + (rejected.length === 1 ? '' : 's') +
-          ': ' + rejected.join(', ') + '. Fix and add again.', 'error');
+        notify(
+          'Skipped ' +
+            rejected.length +
+            ' file' +
+            (rejected.length === 1 ? '' : 's') +
+            ': ' +
+            rejected.join(', ') +
+            '. Fix and add again.',
+          'error'
+        );
       }
     }
 
@@ -146,7 +165,11 @@
     }
 
     function syncOrder() {
-      orderField.value = tiles().map(function (t) { return t.getAttribute('data-image-id'); }).join(',');
+      orderField.value = tiles()
+        .map(function (t) {
+          return t.getAttribute('data-image-id');
+        })
+        .join(',');
       tiles().forEach(function (tile, i) {
         var pos = tile.querySelector('[data-photo-position]');
         if (pos) pos.textContent = i === 0 ? 'Shown first' : '#' + (i + 1);
@@ -188,11 +211,13 @@
       var over = e.target.closest('[data-image-id]');
       if (!over || over === dragged) return;
       var rect = over.getBoundingClientRect();
-      var after = (e.clientX - rect.left) > rect.width / 2;
+      var after = e.clientX - rect.left > rect.width / 2;
       grid.insertBefore(dragged, after ? over.nextSibling : over);
     });
 
-    grid.addEventListener('drop', function (e) { e.preventDefault(); });
+    grid.addEventListener('drop', function (e) {
+      e.preventDefault();
+    });
 
     // Drag-and-drop alone is unusable by keyboard and touch, so every tile also
     // gets explicit move buttons.

@@ -6,6 +6,7 @@ uploads/
 CLAUDE.md
 *.db.tmp
 .sessions/
+coverage/
 
 # Local project documentation (not tracked)
 PROJECT_DOCUMENTATION.md

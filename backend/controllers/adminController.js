@@ -1,15 +1,18 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, rowsToObjects, firstRow } = require('../database');
+const { getDB, saveDB, rowsToObjects } = require('../database');
 const { deleteImageFiles, getHouseImagePaths, getHouseImages } = require('../utils/houseImages');
 
 const PER_PAGE = 15;
 
 function redirectAfterHouseAction(req, res, houseId, success) {
   let refPath = '';
-  try { refPath = new URL(req.headers.referer || '').pathname; } catch (_) {}
-  const dest = refPath === `/admin/house/${houseId}`
-    ? `/admin/house/${houseId}?success=${success}`
-    : `/admin/listings?success=${success}`;
+  try {
+    refPath = new URL(req.headers.referer || '').pathname;
+  } catch (_) {}
+  const dest =
+    refPath === `/admin/house/${houseId}`
+      ? `/admin/house/${houseId}?success=${success}`
+      : `/admin/listings?success=${success}`;
   res.redirect(dest);
 }
 
@@ -19,20 +22,26 @@ const dashboard = (req, res) => {
 
     const v = (r) => (r && r[0] ? r[0].values[0][0] : 0);
 
-    const statusRows = rowsToObjects(db.exec(`SELECT status, COUNT(*) as count FROM houses GROUP BY status`));
+    const statusRows = rowsToObjects(
+      db.exec(`SELECT status, COUNT(*) as count FROM houses GROUP BY status`)
+    );
     const listingsByStatus = { approved: 0, pending: 0, rejected: 0 };
-    statusRows.forEach(r => { if (listingsByStatus.hasOwnProperty(r.status)) listingsByStatus[r.status] = r.count; });
+    statusRows.forEach((r) => {
+      if (Object.prototype.hasOwnProperty.call(listingsByStatus, r.status))
+        listingsByStatus[r.status] = r.count;
+    });
 
     const stats = {
-      students:       v(db.exec(`SELECT COUNT(*) FROM users WHERE role='student'`)),
-      landlords:      v(db.exec(`SELECT COUNT(*) FROM users WHERE role='landlord'`)),
-      totalHouses:    v(db.exec(`SELECT COUNT(*) FROM houses`)),
-      pending:        listingsByStatus.pending,
+      students: v(db.exec(`SELECT COUNT(*) FROM users WHERE role='student'`)),
+      landlords: v(db.exec(`SELECT COUNT(*) FROM users WHERE role='landlord'`)),
+      totalHouses: v(db.exec(`SELECT COUNT(*) FROM houses`)),
+      pending: listingsByStatus.pending,
       activeBookings: v(db.exec(`SELECT COUNT(*) FROM bookings WHERE status='pending'`)),
-      openReports:    v(db.exec(`SELECT COUNT(*) FROM reports WHERE status='open'`)),
+      openReports: v(db.exec(`SELECT COUNT(*) FROM reports WHERE status='open'`)),
     };
 
-    const topHouses = rowsToObjects(db.exec(`
+    const topHouses = rowsToObjects(
+      db.exec(`
       SELECT h.id, h.title, h.location,
         ROUND(AVG(rv.rating), 1) as avg_rating,
         COUNT(rv.id) as review_count,
@@ -44,13 +53,20 @@ const dashboard = (req, res) => {
       GROUP BY h.id
       ORDER BY avg_rating DESC, review_count DESC
       LIMIT 5
-    `));
+    `)
+    );
 
-    const bookingStatusRows = rowsToObjects(db.exec(`SELECT status, COUNT(*) as count FROM bookings GROUP BY status`));
+    const bookingStatusRows = rowsToObjects(
+      db.exec(`SELECT status, COUNT(*) as count FROM bookings GROUP BY status`)
+    );
     const bookingsByStatus = { pending: 0, accepted: 0, declined: 0 };
-    bookingStatusRows.forEach(r => { if (bookingsByStatus.hasOwnProperty(r.status)) bookingsByStatus[r.status] = r.count; });
+    bookingStatusRows.forEach((r) => {
+      if (Object.prototype.hasOwnProperty.call(bookingsByStatus, r.status))
+        bookingsByStatus[r.status] = r.count;
+    });
 
-    const activityFeed = rowsToObjects(db.exec(`
+    const activityFeed = rowsToObjects(
+      db.exec(`
       SELECT 'booking' as event_type, b.created_at as ts,
         u.name as actor, (b.type || ' request') as action, h.title as house_title
       FROM bookings b JOIN houses h ON b.house_id=h.id JOIN users u ON b.student_id=u.id
@@ -58,10 +74,16 @@ const dashboard = (req, res) => {
       SELECT 'report', r.created_at, u.name, 'report filed', h.title
       FROM reports r JOIN houses h ON r.house_id=h.id JOIN users u ON r.reported_by=u.id
       ORDER BY ts DESC LIMIT 10
-    `));
+    `)
+    );
 
     res.render('admin/dashboard', {
-      stats, topHouses, listingsByStatus, bookingsByStatus, activityFeed, query: req.query
+      stats,
+      topHouses,
+      listingsByStatus,
+      bookingsByStatus,
+      activityFeed,
+      query: req.query,
     });
   } catch (err) {
     console.error('Admin dashboard error:', err);
@@ -72,13 +94,13 @@ const dashboard = (req, res) => {
 const adminListings = (req, res) => {
   try {
     const db = getDB();
-    const filter  = req.query.filter  || '';
+    const filter = req.query.filter || '';
     const keyword = (req.query.keyword || '').trim();
-    const page    = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
 
     const conditions = [];
     const params = [];
-    if (filter && ['pending','approved','rejected'].includes(filter)) {
+    if (filter && ['pending', 'approved', 'rejected'].includes(filter)) {
       conditions.push(`h.status = ?`);
       params.push(filter);
     }
@@ -94,11 +116,11 @@ const adminListings = (req, res) => {
     );
     if (params.length) countStmt.bind(params);
     countStmt.step();
-    const totalCount  = countStmt.getAsObject()['COUNT(*)'] || 0;
+    const totalCount = countStmt.getAsObject()['COUNT(*)'] || 0;
     countStmt.free();
     const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
-    const safePage   = Math.min(page, totalPages);
-    const offset     = (safePage - 1) * PER_PAGE;
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * PER_PAGE;
 
     const listingStmt = db.prepare(`
       SELECT h.*, u.name as landlord_name, u.email as landlord_email
@@ -113,7 +135,13 @@ const adminListings = (req, res) => {
     listingStmt.free();
 
     res.render('admin/listings', {
-      listings, filter, keyword, page: safePage, totalPages, totalCount, query: req.query
+      listings,
+      filter,
+      keyword,
+      page: safePage,
+      totalPages,
+      totalCount,
+      query: req.query,
     });
   } catch (err) {
     console.error('Admin listings error:', err);
@@ -125,22 +153,26 @@ const analytics = (req, res) => {
   try {
     const db = getDB();
 
-    const listingsPerMonth = rowsToObjects(db.exec(`
+    const listingsPerMonth = rowsToObjects(
+      db.exec(`
       SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as count
       FROM houses
       WHERE created_at >= date('now', '-6 months')
       GROUP BY month ORDER BY month ASC
-    `));
+    `)
+    );
 
-    const reviewsByRating = rowsToObjects(db.exec(
-      `SELECT rating, COUNT(*) as count FROM reviews GROUP BY rating ORDER BY rating ASC`
-    ));
+    const reviewsByRating = rowsToObjects(
+      db.exec(`SELECT rating, COUNT(*) as count FROM reviews GROUP BY rating ORDER BY rating ASC`)
+    );
 
-    const topLocations = rowsToObjects(db.exec(`
+    const topLocations = rowsToObjects(
+      db.exec(`
       SELECT location, COUNT(*) as count FROM houses
       WHERE status='approved'
       GROUP BY location ORDER BY count DESC LIMIT 8
-    `));
+    `)
+    );
 
     res.render('admin/analytics', { listingsPerMonth, reviewsByRating, topLocations });
   } catch (err) {
@@ -155,7 +187,9 @@ const viewHouse = (req, res) => {
     if (isNaN(houseId)) return res.redirect('/admin/dashboard');
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT h.*, u.name as landlord_name, u.email as landlord_email, lp.phone as landlord_phone FROM houses h JOIN users u ON h.landlord_id = u.id LEFT JOIN landlord_profiles lp ON u.id = lp.user_id WHERE h.id = ?`);
+    const houseStmt = db.prepare(
+      `SELECT h.*, u.name as landlord_name, u.email as landlord_email, lp.phone as landlord_phone FROM houses h JOIN users u ON h.landlord_id = u.id LEFT JOIN landlord_profiles lp ON u.id = lp.user_id WHERE h.id = ?`
+    );
     houseStmt.bind([houseId]);
     const house = houseStmt.step() ? houseStmt.getAsObject() : null;
     houseStmt.free();
@@ -189,13 +223,23 @@ const viewHouse = (req, res) => {
     while (reviewStmt.step()) reviews.push(reviewStmt.getAsObject());
     reviewStmt.free();
 
-    const avgStmt = db.prepare(`SELECT ROUND(AVG(rating),1) as avg FROM reviews WHERE house_id = ?`);
+    const avgStmt = db.prepare(
+      `SELECT ROUND(AVG(rating),1) as avg FROM reviews WHERE house_id = ?`
+    );
     avgStmt.bind([houseId]);
     avgStmt.step();
     const avgRating = avgStmt.getAsObject().avg || null;
     avgStmt.free();
 
-    res.render('admin/house-detail', { house, images, amenities, bookings, reviews, avgRating, query: req.query });
+    res.render('admin/house-detail', {
+      house,
+      images,
+      amenities,
+      bookings,
+      reviews,
+      avgRating,
+      query: req.query,
+    });
   } catch (err) {
     console.error('Admin view house error:', err);
     res.status(500).send('Something went wrong. Please try again.');
@@ -243,7 +287,7 @@ const deleteHouse = (req, res) => {
     db.run(`DELETE FROM bookings    WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM reviews     WHERE house_id = ?`, [houseId]);
     db.run(`DELETE FROM reports     WHERE house_id = ?`, [houseId]);
-    db.run(`DELETE FROM houses      WHERE id = ?`,       [houseId]);
+    db.run(`DELETE FROM houses      WHERE id = ?`, [houseId]);
     saveDB();
     deleteImageFiles(imgPaths);
     res.redirect('/admin/listings?success=listing_deleted');
@@ -266,7 +310,9 @@ const manageUsers = (req, res) => {
         const kw = `%${keyword}%`;
         params.push(kw, kw);
       }
-      const stmt = db.prepare(`SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`);
+      const stmt = db.prepare(
+        `SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`
+      );
       stmt.bind(params);
       const rows = [];
       while (stmt.step()) rows.push(stmt.getAsObject());
@@ -291,7 +337,10 @@ const toggleUser = (req, res) => {
     const db = getDB();
     const stmt = db.prepare(`SELECT is_active FROM users WHERE id = ?`);
     stmt.bind([userId]);
-    if (!stmt.step()) { stmt.free(); return res.redirect('/admin/users'); }
+    if (!stmt.step()) {
+      stmt.free();
+      return res.redirect('/admin/users');
+    }
     const { is_active } = stmt.getAsObject();
     stmt.free();
     db.run(`UPDATE users SET is_active = ? WHERE id = ?`, [is_active ? 0 : 1, userId]);
@@ -309,8 +358,9 @@ const manageReports = (req, res) => {
     const status = req.query.status || '';
     const conditions = [];
     const params = [];
-    if (status && ['open','resolved'].includes(status)) {
-      conditions.push(`r.status = ?`); params.push(status);
+    if (status && ['open', 'resolved'].includes(status)) {
+      conditions.push(`r.status = ?`);
+      params.push(status);
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const stmt = db.prepare(`
@@ -350,12 +400,13 @@ const allBookings = (req, res) => {
   try {
     const db = getDB();
     const status = req.query.status || '';
-    const page   = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const perPg  = 20;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const perPg = 20;
     const conditions = [];
     const params = [];
-    if (status && ['pending','accepted','declined'].includes(status)) {
-      conditions.push(`b.status = ?`); params.push(status);
+    if (status && ['pending', 'accepted', 'declined'].includes(status)) {
+      conditions.push(`b.status = ?`);
+      params.push(status);
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -365,8 +416,8 @@ const allBookings = (req, res) => {
     const totalCount = countStmt.getAsObject()['COUNT(*)'] || 0;
     countStmt.free();
     const totalPages = Math.max(1, Math.ceil(totalCount / perPg));
-    const safePage   = Math.min(page, totalPages);
-    const offset     = (safePage - 1) * perPg;
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * perPg;
 
     const stmt = db.prepare(`
       SELECT b.*, h.title as house_title, h.location,
@@ -385,7 +436,14 @@ const allBookings = (req, res) => {
     while (stmt.step()) bookings.push(stmt.getAsObject());
     stmt.free();
 
-    res.render('admin/bookings', { bookings, status, page: safePage, totalPages, totalCount, query: req.query });
+    res.render('admin/bookings', {
+      bookings,
+      status,
+      page: safePage,
+      totalPages,
+      totalCount,
+      query: req.query,
+    });
   } catch (err) {
     console.error('All bookings error:', err);
     res.status(500).send('Something went wrong. Please try again.');
@@ -421,8 +479,10 @@ const changePassword = async (req, res) => {
       return res.redirect('/admin/profile?error=password_too_short');
     const db = getDB();
     const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]); s.step();
-    const { password: hash } = s.getAsObject(); s.free();
+    s.bind([req.session.user.id]);
+    s.step();
+    const { password: hash } = s.getAsObject();
+    s.free();
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/admin/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
@@ -436,8 +496,19 @@ const changePassword = async (req, res) => {
 };
 
 module.exports = {
-  dashboard, adminListings, analytics,
-  viewHouse, approveHouse, rejectHouse, deleteHouse,
-  manageUsers, toggleUser, manageReports, resolveReport, allBookings,
-  showProfile, updateProfile, changePassword
+  dashboard,
+  adminListings,
+  analytics,
+  viewHouse,
+  approveHouse,
+  rejectHouse,
+  deleteHouse,
+  manageUsers,
+  toggleUser,
+  manageReports,
+  resolveReport,
+  allBookings,
+  showProfile,
+  updateProfile,
+  changePassword,
 };

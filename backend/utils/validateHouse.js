@@ -1,17 +1,24 @@
 // Single source of truth for the amenity list. The views render checkboxes from
 // this array, and submitted values are filtered against it.
 const AMENITY_OPTIONS = [
-  'WiFi', 'Water', 'Electricity', 'Parking', 'Security',
-  'CCTV', 'Furnished', 'Kitchen', 'Balcony',
+  'WiFi',
+  'Water',
+  'Electricity',
+  'Parking',
+  'Security',
+  'CCTV',
+  'Furnished',
+  'Kitchen',
+  'Balcony',
 ];
 
 const LIMITS = {
-  title:       { min: 5,  max: 100 },
+  title: { min: 5, max: 100 },
   description: { min: 20, max: 2000 },
-  estate:      { max: 60 },
-  location:    { max: 60 },
-  rent:        { min: 1,  max: 10000000 },
-  rooms:       { min: 1,  max: 10 },
+  estate: { max: 60 },
+  location: { max: 60 },
+  rent: { min: 1, max: 10000000 },
+  rooms: { min: 1, max: 10 },
 };
 
 function toArray(value) {
@@ -58,26 +65,33 @@ function validateHouseInput(body) {
     errors.push('Rent looks unrealistically high. Please check the amount');
   }
 
-  const location = (body.location_select === '__new__'
-    ? (body.location_new || '')
-    : (body.location_select || '')
-  ).trim().slice(0, LIMITS.location.max);
+  const location = (
+    body.location_select === '__new__' ? body.location_new || '' : body.location_select || ''
+  )
+    .trim()
+    .slice(0, LIMITS.location.max);
   if (!location) errors.push('Location is required');
 
   const estate = (body.estate || '').trim().slice(0, LIMITS.estate.max);
 
-  const bedrooms  = clampInt(body.bedrooms,  LIMITS.rooms, 1);
+  const bedrooms = clampInt(body.bedrooms, LIMITS.rooms, 1);
   const bathrooms = clampInt(body.bathrooms, LIMITS.rooms, 1);
 
   const amenities = toArray(body.amenities)
-    .map(a => String(a).trim())
-    .filter(a => AMENITY_OPTIONS.includes(a));
+    .map((a) => String(a).trim())
+    .filter((a) => AMENITY_OPTIONS.includes(a));
 
   return {
     errors,
     values: {
-      title, description, rent, location, estate,
-      bedrooms, bathrooms, amenities,
+      title,
+      description,
+      rent,
+      location,
+      estate,
+      bedrooms,
+      bathrooms,
+      amenities,
     },
   };
 }

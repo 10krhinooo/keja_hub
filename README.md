@@ -5,19 +5,19 @@ landlords for affordable accommodation near campus.
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| Runtime | Node.js |
-| Framework | Express 5 |
-| View Engine | EJS |
-| Database | SQLite (via sql.js, file-persisted) |
-| Authentication | express-session + bcryptjs |
-| File Uploads | Multer (disk storage) |
-| Email | Nodemailer over Gmail SMTP |
-| Security | Helmet, express-rate-limit, CSRF tokens |
-| Sessions | session-file-store (file-backed) |
-| CSS | Vanilla CSS (single stylesheet) |
-| JavaScript | Vanilla JS (no frontend frameworks) |
+| Layer          | Technology                              |
+| -------------- | --------------------------------------- |
+| Runtime        | Node.js                                 |
+| Framework      | Express 5                               |
+| View Engine    | EJS                                     |
+| Database       | SQLite (via sql.js, file-persisted)     |
+| Authentication | express-session + bcryptjs              |
+| File Uploads   | Multer (disk storage)                   |
+| Email          | Nodemailer over Gmail SMTP              |
+| Security       | Helmet, express-rate-limit, CSRF tokens |
+| Sessions       | session-file-store (file-backed)        |
+| CSS            | Vanilla CSS (single stylesheet)         |
+| JavaScript     | Vanilla JS (no frontend frameworks)     |
 
 ## Getting Started
 
@@ -47,7 +47,8 @@ The app runs at `http://localhost:3000` (configurable via `PORT` in `.env`).
 > **First run:** The database is created automatically. Seed data (sample
 > users, houses, bookings, reviews) is inserted once on fresh startup.
 > It is **never inserted when `NODE_ENV=production`**, since every demo account
-> shares the password `password123`.
+> shares a single password. Set `SEED_PASSWORD` in `.env` to choose it; leave it
+> unset and a random one is generated and printed to the console on first run.
 
 ### Production checklist
 
@@ -66,18 +67,18 @@ Copy `.env.example` to `.env` and fill it in. The server throws on startup if
 `SESSION_SECRET` or `ADMIN_PASSWORD` is missing, and additionally if `APP_URL`,
 `SMTP_USER`, or `SMTP_PASS` is missing when `NODE_ENV=production`.
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PORT` | No | HTTP port (default: `3000`) |
-| `SESSION_SECRET` | Yes | Signs the session cookie. Use 32+ random characters |
-| `ADMIN_PASSWORD` | Yes | Password for `admin@kejahub.com`, applied **only** when the database is first created |
-| `APP_URL` | In production | Public base URL used to build email links. Required when `NODE_ENV=production`, because trusting the `Host` header would let an attacker redirect reset links to their own domain |
-| `SMTP_USER` | In production | Gmail address that sends transactional mail |
-| `SMTP_PASS` | In production | Gmail **App Password** (16 characters). Blank in development means reset links log to the console |
-| `SMTP_FROM` | No | From header (default: `KejaHub <SMTP_USER>`) |
-| `NODE_ENV` | No | Set to `production` to enable secure cookies, `trust proxy`, HSTS, and disable demo seeding |
-| `SEED` | No | Set to `true` to force demo data even in production (staging only) |
-| `DB_PATH` | No | Override the SQLite file location |
+| Variable         | Required      | Description                                                                                                                                                                       |
+| ---------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`           | No            | HTTP port (default: `3000`)                                                                                                                                                       |
+| `SESSION_SECRET` | Yes           | Signs the session cookie. Use 32+ random characters                                                                                                                               |
+| `ADMIN_PASSWORD` | Yes           | Password for `admin@kejahub.com`, applied **only** when the database is first created                                                                                             |
+| `APP_URL`        | In production | Public base URL used to build email links. Required when `NODE_ENV=production`, because trusting the `Host` header would let an attacker redirect reset links to their own domain |
+| `SMTP_USER`      | In production | Gmail address that sends transactional mail                                                                                                                                       |
+| `SMTP_PASS`      | In production | Gmail **App Password** (16 characters). Blank in development means reset links log to the console                                                                                 |
+| `SMTP_FROM`      | No            | From header (default: `KejaHub <SMTP_USER>`)                                                                                                                                      |
+| `NODE_ENV`       | No            | Set to `production` to enable secure cookies, `trust proxy`, HSTS, and disable demo seeding                                                                                       |
+| `SEED`           | No            | Set to `true` to force demo data even in production (staging only)                                                                                                                |
+| `DB_PATH`        | No            | Override the SQLite file location                                                                                                                                                 |
 
 Generate a session secret with:
 
@@ -101,14 +102,19 @@ Outlook; see `backend/utils/mailer.js`.
 
 ## Sample Logins
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@kejahub.com` | *(set via `ADMIN_PASSWORD` env var)* |
-| Student | `brian@student.com` | `password123` |
-| Student | `amina@student.com` | `password123` |
-| Student | `kevin@student.com` | `password123` |
-| Landlord | `james@landlord.com` | `password123` |
-| Landlord | `grace@landlord.com` | `password123` |
+Demo accounts are development only and are never seeded in production.
+
+| Role     | Email                | Password                   |
+| -------- | -------------------- | -------------------------- |
+| Admin    | `admin@kejahub.com`  | _set via `ADMIN_PASSWORD`_ |
+| Student  | `brian@student.com`  | _set via `SEED_PASSWORD`_  |
+| Student  | `amina@student.com`  | _set via `SEED_PASSWORD`_  |
+| Student  | `kevin@student.com`  | _set via `SEED_PASSWORD`_  |
+| Landlord | `james@landlord.com` | _set via `SEED_PASSWORD`_  |
+| Landlord | `grace@landlord.com` | _set via `SEED_PASSWORD`_  |
+
+`ADMIN_PASSWORD` only applies when the database is first created. If
+`SEED_PASSWORD` is unset, the generated password is printed on first run.
 
 ## Project Structure
 
@@ -157,19 +163,19 @@ Everything happens in one multipart form submit, so there are no separate image
 endpoints, which keeps the CSRF and ownership model identical to the rest of
 the app.
 
-| Action | How |
-| --- | --- |
-| Upload many at once | Drag onto the dropzone or browse; up to 10 per listing |
-| Remove before submitting | Click the × on a staged thumbnail |
-| Delete an existing photo | Tick its checkbox, then save |
-| Set the cover | Choose its **Cover** radio |
-| Reorder | Drag a tile, or use the ← → buttons (keyboard accessible) |
+| Action                   | How                                                       |
+| ------------------------ | --------------------------------------------------------- |
+| Upload many at once      | Drag onto the dropzone or browse; up to 10 per listing    |
+| Remove before submitting | Click the × on a staged thumbnail                         |
+| Delete an existing photo | Tick its checkbox, then save                              |
+| Set the cover            | Choose its **Cover** radio                                |
+| Reorder                  | Drag a tile, or use the ← → buttons (keyboard accessible) |
 
 Enforced server-side: a maximum of **10 photos per listing** (not per upload),
 5 MB per file, and `jpeg`/`png`/`webp` only. Submitted image ids are always
 filtered to ones belonging to that listing, so a crafted POST cannot touch
 another landlord's photos. Files uploaded during a failed submission are
-deleted rather than orphaned, and deleting a listing, as landlord *or* admin,
+deleted rather than orphaned, and deleting a listing, as landlord _or_ admin,
 removes its files from disk.
 
 `house_images.sort_order` stores the display order; `is_primary` flags the
@@ -179,6 +185,5 @@ has a thumbnail even if the flagged cover was deleted.
 
 **Admin review happens once, at creation.** Later edits, including photo
 changes, go live immediately and stay visible to students. Editing a
-*rejected* listing is the one exception: that counts as a resubmission and
+_rejected_ listing is the one exception: that counts as a resubmission and
 returns it to `pending`.
-

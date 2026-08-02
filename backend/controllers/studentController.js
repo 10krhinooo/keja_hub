@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { getDB, saveDB, rowsToObjects, firstRow, getDistinctLocations } = require('../database');
+const { getDB, saveDB, rowsToObjects, getDistinctLocations } = require('../database');
 
 const dashboard = (req, res) => {
   try {
@@ -25,17 +25,19 @@ const dashboard = (req, res) => {
 
 const SEARCH_PER_PAGE = 12;
 const SORT_MAP = {
-  price_asc:   'h.rent ASC',
-  price_desc:  'h.rent DESC',
+  price_asc: 'h.rent ASC',
+  price_desc: 'h.rent DESC',
   rating_desc: 'avg_rating DESC',
-  newest:      'h.created_at DESC',
+  newest: 'h.created_at DESC',
 };
 
 const searchHouses = (req, res) => {
   try {
     const { keyword, min_rent, max_rent, bedrooms, bathrooms, sort, location } = req.query;
     const amenities = req.query.amenities
-      ? (Array.isArray(req.query.amenities) ? req.query.amenities : [req.query.amenities])
+      ? Array.isArray(req.query.amenities)
+        ? req.query.amenities
+        : [req.query.amenities]
       : [];
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const db = getDB();
@@ -44,7 +46,9 @@ const searchHouses = (req, res) => {
     const params = [];
 
     if (keyword) {
-      conditions.push(`(h.title LIKE ? OR h.description LIKE ? OR h.location LIKE ? OR h.estate LIKE ?)`);
+      conditions.push(
+        `(h.title LIKE ? OR h.description LIKE ? OR h.location LIKE ? OR h.estate LIKE ?)`
+      );
       const kw = `%${keyword}%`;
       params.push(kw, kw, kw, kw);
     }
@@ -54,24 +58,40 @@ const searchHouses = (req, res) => {
     }
     if (min_rent) {
       const n = parseFloat(min_rent);
-      if (!isNaN(n)) { conditions.push(`h.rent >= ?`); params.push(n); }
+      if (!isNaN(n)) {
+        conditions.push(`h.rent >= ?`);
+        params.push(n);
+      }
     }
     if (max_rent) {
       const n = parseFloat(max_rent);
-      if (!isNaN(n)) { conditions.push(`h.rent <= ?`); params.push(n); }
+      if (!isNaN(n)) {
+        conditions.push(`h.rent <= ?`);
+        params.push(n);
+      }
     }
     if (bedrooms) {
       const n = parseInt(bedrooms, 10);
       if (!isNaN(n)) {
-        if (n >= 4) { conditions.push(`h.bedrooms >= ?`); params.push(4); }
-        else        { conditions.push(`h.bedrooms = ?`); params.push(n); }
+        if (n >= 4) {
+          conditions.push(`h.bedrooms >= ?`);
+          params.push(4);
+        } else {
+          conditions.push(`h.bedrooms = ?`);
+          params.push(n);
+        }
       }
     }
     if (bathrooms) {
       const n = parseInt(bathrooms, 10);
       if (!isNaN(n)) {
-        if (n >= 3) { conditions.push(`h.bathrooms >= ?`); params.push(3); }
-        else        { conditions.push(`h.bathrooms = ?`); params.push(n); }
+        if (n >= 3) {
+          conditions.push(`h.bathrooms >= ?`);
+          params.push(3);
+        } else {
+          conditions.push(`h.bathrooms = ?`);
+          params.push(n);
+        }
       }
     }
     for (const am of amenities) {
@@ -89,8 +109,8 @@ const searchHouses = (req, res) => {
     countStmt.free();
 
     const totalPages = Math.max(1, Math.ceil(totalCount / SEARCH_PER_PAGE));
-    const safePage   = Math.min(page, totalPages);
-    const offset     = (safePage - 1) * SEARCH_PER_PAGE;
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * SEARCH_PER_PAGE;
 
     const stmt = db.prepare(`
       SELECT h.*,
@@ -111,8 +131,14 @@ const searchHouses = (req, res) => {
     const locations = getDistinctLocations();
 
     res.render('student/search', {
-      houses, filters: req.query, page: safePage, totalPages, totalCount,
-      sort: sort || 'newest', amenities, locations
+      houses,
+      filters: req.query,
+      page: safePage,
+      totalPages,
+      totalCount,
+      sort: sort || 'newest',
+      amenities,
+      locations,
     });
   } catch (err) {
     console.error('Search error:', err);
@@ -190,8 +216,15 @@ const viewHouse = (req, res) => {
     reviewCheckStmt.free();
 
     res.render('student/house-detail', {
-      house, images, amenities, reviews, avgRating, landlord,
-      existingBooking, existingReview, query: req.query
+      house,
+      images,
+      amenities,
+      reviews,
+      avgRating,
+      landlord,
+      existingBooking,
+      existingReview,
+      query: req.query,
     });
   } catch (err) {
     console.error('View house error:', err);
@@ -207,7 +240,9 @@ const sendBooking = (req, res) => {
 
     const db = getDB();
 
-    const houseStmt = db.prepare(`SELECT id FROM houses WHERE id = ? AND status = 'approved' AND is_available = 1`);
+    const houseStmt = db.prepare(
+      `SELECT id FROM houses WHERE id = ? AND status = 'approved' AND is_available = 1`
+    );
     houseStmt.bind([houseId]);
     const houseExists = houseStmt.step();
     houseStmt.free();
@@ -279,10 +314,12 @@ const addReview = (req, res) => {
     existStmt.free();
     if (alreadyReviewed) return res.redirect(`/student/house/${houseId}?error=already_reviewed`);
 
-    db.run(
-      `INSERT INTO reviews (house_id, student_id, rating, comment) VALUES (?, ?, ?, ?)`,
-      [houseId, req.session.user.id, ratingNum, comment || null]
-    );
+    db.run(`INSERT INTO reviews (house_id, student_id, rating, comment) VALUES (?, ?, ?, ?)`, [
+      houseId,
+      req.session.user.id,
+      ratingNum,
+      comment || null,
+    ]);
     saveDB();
     res.redirect(`/student/house/${houseId}?success=review_posted`);
   } catch (err) {
@@ -299,10 +336,11 @@ const reportHouse = (req, res) => {
       return res.redirect(`/student/house/${houseId || ''}?error=invalid_report`);
 
     const db = getDB();
-    db.run(
-      `INSERT INTO reports (house_id, reported_by, reason) VALUES (?, ?, ?)`,
-      [houseId, req.session.user.id, reason.trim()]
-    );
+    db.run(`INSERT INTO reports (house_id, reported_by, reason) VALUES (?, ?, ?)`, [
+      houseId,
+      req.session.user.id,
+      reason.trim(),
+    ]);
     saveDB();
     res.redirect(`/student/house/${houseId}?success=report_filed`);
   } catch (err) {
@@ -335,8 +373,12 @@ const updateProfile = (req, res) => {
       db.run(`UPDATE users SET name = ? WHERE id = ?`, [name.trim(), userId]);
       req.session.user = { ...req.session.user, name: name.trim() };
     }
-    db.run(`UPDATE student_profiles SET phone=?, university=?, course=? WHERE user_id=?`,
-      [phone || '', university || '', course || '', userId]);
+    db.run(`UPDATE student_profiles SET phone=?, university=?, course=? WHERE user_id=?`, [
+      phone || '',
+      university || '',
+      course || '',
+      userId,
+    ]);
     saveDB();
     res.redirect('/student/profile?success=profile_updated');
   } catch (err) {
@@ -354,8 +396,10 @@ const changePassword = async (req, res) => {
       return res.redirect('/student/profile?error=password_too_short');
     const db = getDB();
     const s = db.prepare(`SELECT password FROM users WHERE id = ?`);
-    s.bind([req.session.user.id]); s.step();
-    const { password: hash } = s.getAsObject(); s.free();
+    s.bind([req.session.user.id]);
+    s.step();
+    const { password: hash } = s.getAsObject();
+    s.free();
     const match = await bcrypt.compare(current_password || '', hash);
     if (!match) return res.redirect('/student/profile?error=wrong_password');
     const newHash = await bcrypt.hash(new_password, 10);
@@ -368,4 +412,15 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { dashboard, searchHouses, viewHouse, sendBooking, myBookings, addReview, reportHouse, showProfile, updateProfile, changePassword };
+module.exports = {
+  dashboard,
+  searchHouses,
+  viewHouse,
+  sendBooking,
+  myBookings,
+  addReview,
+  reportHouse,
+  showProfile,
+  updateProfile,
+  changePassword,
+};

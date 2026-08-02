@@ -11,21 +11,27 @@
       msg = field.getAttribute('data-email') || 'Please enter a valid email address';
     } else if (val && field.hasAttribute('data-min-length')) {
       var min = parseInt(field.getAttribute('data-min-length'), 10);
-      if (val.length < min) msg = field.getAttribute('data-min-length-msg') || ('Minimum ' + min + ' characters required');
+      if (val.length < min)
+        msg =
+          field.getAttribute('data-min-length-msg') || 'Minimum ' + min + ' characters required';
     } else if (val && field.hasAttribute('data-max-length')) {
       var max = parseInt(field.getAttribute('data-max-length'), 10);
-      if (val.length > max) msg = field.getAttribute('data-max-length-msg') || ('Maximum ' + max + ' characters');
+      if (val.length > max)
+        msg = field.getAttribute('data-max-length-msg') || 'Maximum ' + max + ' characters';
     } else if (val && field.hasAttribute('data-min-value')) {
       var minV = parseFloat(field.getAttribute('data-min-value'));
-      if (isNaN(parseFloat(val)) || parseFloat(val) < minV) msg = field.getAttribute('data-min-value-msg') || ('Must be at least ' + minV);
+      if (isNaN(parseFloat(val)) || parseFloat(val) < minV)
+        msg = field.getAttribute('data-min-value-msg') || 'Must be at least ' + minV;
     } else if (val && field.hasAttribute('data-max-value')) {
       var maxV = parseFloat(field.getAttribute('data-max-value'));
-      if (!isNaN(parseFloat(val)) && parseFloat(val) > maxV) msg = field.getAttribute('data-max-value-msg') || ('Must be at most ' + maxV);
+      if (!isNaN(parseFloat(val)) && parseFloat(val) > maxV)
+        msg = field.getAttribute('data-max-value-msg') || 'Must be at most ' + maxV;
     } else if (field.hasAttribute('data-match')) {
       var matchName = field.getAttribute('data-match');
       var form = field.closest('form');
       var target = form ? form.querySelector('[name="' + matchName + '"]') : null;
-      if (target && val !== target.value) msg = field.getAttribute('data-match-msg') || 'Fields do not match';
+      if (target && val !== target.value)
+        msg = field.getAttribute('data-match-msg') || 'Fields do not match';
     } else if (val && field.hasAttribute('data-pattern')) {
       var re = new RegExp(field.getAttribute('data-pattern'));
       if (!re.test(val)) msg = field.getAttribute('data-pattern-msg') || 'Invalid format';
@@ -37,7 +43,10 @@
   function afterWrap(field) {
     var p = field.parentNode;
     var inWrap = p.classList && p.classList.contains('pwd-wrap');
-    return { parent: inWrap ? p.parentNode : p, before: inWrap ? p.nextSibling : field.nextSibling };
+    return {
+      parent: inWrap ? p.parentNode : p,
+      before: inWrap ? p.nextSibling : field.nextSibling,
+    };
   }
 
   function setFieldState(field, errorMsg) {
@@ -63,13 +72,18 @@
   }
 
   function validateAll(form) {
-    var fields = form.querySelectorAll('[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]');
+    var fields = form.querySelectorAll(
+      '[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]'
+    );
     var ok = true;
     var first = null;
     fields.forEach(function (f) {
       var msg = validate(f);
       setFieldState(f, msg);
-      if (msg) { ok = false; if (!first) first = f; }
+      if (msg) {
+        ok = false;
+        if (!first) first = f;
+      }
     });
     return { ok: ok, first: first };
   }
@@ -77,9 +91,13 @@
   function updateSubmitBtn(form) {
     var btn = form.querySelector('button[type="submit"],.btn[type="submit"]');
     if (!btn) return;
-    var fields = form.querySelectorAll('[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]');
+    var fields = form.querySelectorAll(
+      '[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]'
+    );
     var allOk = true;
-    fields.forEach(function (f) { if (validate(f)) allOk = false; });
+    fields.forEach(function (f) {
+      if (validate(f)) allOk = false;
+    });
     btn.disabled = !allOk;
   }
 
@@ -87,17 +105,17 @@
     var container = document.createElement('div');
     container.innerHTML =
       '<div class="strength-segments">' +
-        '<div class="strength-seg" id="seg1"></div>' +
-        '<div class="strength-seg" id="seg2"></div>' +
-        '<div class="strength-seg" id="seg3"></div>' +
-        '<div class="strength-seg" id="seg4"></div>' +
+      '<div class="strength-seg" id="seg1"></div>' +
+      '<div class="strength-seg" id="seg2"></div>' +
+      '<div class="strength-seg" id="seg3"></div>' +
+      '<div class="strength-seg" id="seg4"></div>' +
       '</div>' +
       '<p class="strength-label" id="strength-label"></p>' +
       '<ul class="strength-checklist">' +
-        '<li data-rule="length">8+ characters</li>' +
-        '<li data-rule="upper">Uppercase letter</li>' +
-        '<li data-rule="number">Number</li>' +
-        '<li data-rule="special">Special character (!@#$%^&amp;*)</li>' +
+      '<li data-rule="length">8+ characters</li>' +
+      '<li data-rule="upper">Uppercase letter</li>' +
+      '<li data-rule="number">Number</li>' +
+      '<li data-rule="special">Special character (!@#$%^&amp;*)</li>' +
       '</ul>';
     var loc = afterWrap(field);
     loc.parent.insertBefore(container, loc.before);
@@ -105,9 +123,9 @@
     field.addEventListener('input', function () {
       var v = field.value;
       var rules = {
-        length:  v.length >= 8,
-        upper:   /[A-Z]/.test(v),
-        number:  /[0-9]/.test(v),
+        length: v.length >= 8,
+        upper: /[A-Z]/.test(v),
+        number: /[0-9]/.test(v),
         special: /[^A-Za-z0-9]/.test(v),
       };
       var score = Object.values(rules).filter(Boolean).length;
@@ -129,7 +147,9 @@
   }
 
   function initForm(form) {
-    var fields = form.querySelectorAll('[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]');
+    var fields = form.querySelectorAll(
+      '[data-required],[data-email],[data-min-length],[data-min-value],[data-match],[data-pattern]'
+    );
 
     fields.forEach(function (field) {
       if (field.hasAttribute('data-password-strength')) attachPasswordStrength(field);
@@ -177,4 +197,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-validate-form]').forEach(initForm);
   });
+
+  // Browser behaviour is unchanged; this only makes the rule engine reachable
+  // from a test runner so each rule can be asserted without staging a full form.
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { validate: validate, validateAll: validateAll, initForm: initForm };
+  }
 })();
