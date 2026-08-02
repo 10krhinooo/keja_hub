@@ -23,8 +23,10 @@ const PROJECT_ROOT = path.join(__dirname, '../../');
 const UPLOAD_ROOT = path.join(PROJECT_ROOT, 'uploads');
 
 // A short wait: the delete helpers are deliberately fire-and-forget, so the
-// unlink lands on a later tick than the call.
-const settle = () => new Promise((resolve) => setImmediate(resolve));
+// unlink lands on a later tick than the call. fs.promises.unlink resolves
+// off the libuv threadpool, which a single setImmediate is not reliably
+// past under load (observed flaking on Node 22 in CI).
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 describe('houseImages', () => {
   let db;
