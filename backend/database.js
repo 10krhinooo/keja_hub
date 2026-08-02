@@ -132,6 +132,12 @@ async function initDB() {
     db.exec(`UPDATE house_images SET sort_order = id`);
   } catch (_) {}
 
+  // Safe migration: add thumbnail_path for the resized 400px card image.
+  // Existing rows are left NULL; templates fall back to image_path for those.
+  try {
+    db.exec(`ALTER TABLE house_images ADD COLUMN thumbnail_path TEXT`);
+  } catch (_) {}
+
   db.exec(`CREATE INDEX IF NOT EXISTS idx_house_images_house ON house_images(house_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_amenities_house    ON amenities(house_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_bookings_house     ON bookings(house_id)`);

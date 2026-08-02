@@ -169,7 +169,7 @@
             <% var house = houses[i]; %>
             <a href="/student/house/<%= house.id %>" class="house-card">
               <% if (house.primary_image) { %>
-                <img src="<%= house.primary_image %>" alt="<%= house.title %>">
+                <img src="<%= house.primary_thumbnail || house.primary_image %>" alt="<%= house.title %>">
               <% } else { %>
                 <div class="img-placeholder">No Photo Yet</div>
               <% } %>
