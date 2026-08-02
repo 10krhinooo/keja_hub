@@ -8,7 +8,7 @@
   <script src="/js/toast.js"></script>
   <script src="/js/skeleton.js"></script>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success === 'welcome') ? 'welcome' : ((query && query.success) || '') %>" data-toast-error="<%= (query && query.error) || '' %>" data-user-name="<%= user.name %>">
   <%- include('../partials/nav-landlord') %>
 
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
@@ -68,7 +68,7 @@
                   <form method="POST" action="/landlord/house/<%= house.id %>/delete" style="display:inline">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button class="btn btn-danger btn-sm"
-                      onclick="return confirm('Delete this listing? All pending booking requests will also be removed.')">
+                      data-confirm="Delete this listing? All pending booking requests will also be removed.">
                       Delete
                     </button>
                   </form>
@@ -81,13 +81,7 @@
     </div>
   </div>
 
-  <% if (query && query.success === 'welcome') { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success('Welcome back, ' + <%- JSON.stringify(user.name) %> + '!');});</script>
-  <% } else if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
+  <script src="/js/toast-init.js"></script>
+  <script src="/js/confirm.js"></script>
 </body>
 </html>

@@ -110,28 +110,6 @@
       </form>
     </div>
   </div>
-  <script>
-    (function () {
-      var locSelect = document.getElementById('loc-select');
-      var locNew = document.getElementById('loc-new');
-      locSelect.addEventListener('change', function () {
-        locNew.style.display = locSelect.value === '__new__' ? 'block' : 'none';
-        if (locSelect.value === '__new__') locNew.focus();
-      });
-      document.querySelector('form').addEventListener('submit', function (e) {
-        if (locSelect.value === '__new__' && locNew.value.trim() === '') {
-          e.preventDefault();
-          locNew.style.border = '1.5px solid #c62828';
-          locNew.focus();
-          locNew.placeholder = 'Please enter a location name';
-        }
-        if (locSelect.value === '' && locNew.style.display === 'none') {
-          e.preventDefault();
-          locSelect.style.border = '1.5px solid #c62828';
-          locSelect.focus();
-        }
-      });
-    })();
-  </script>
+  <script src="/js/location-select.js"></script>
 </body>
 </html>

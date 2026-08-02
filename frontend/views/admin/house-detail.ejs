@@ -16,7 +16,7 @@
     @media (max-width:600px) { .detail-grid { grid-template-columns:1fr; } }
   </style>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-admin') %>
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
     <a href="/admin/dashboard" style="display:inline-block;margin-bottom:16px;color:#1B4332;text-decoration:none;font-size:14px;font-weight:500">← Back To Dashboard</a>
@@ -41,11 +41,12 @@
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="btn btn-success" style="width:100%">✓ Approve Listing</button>
             </form>
-            <button type="button" class="btn btn-danger" style="width:100%" onclick="document.getElementById('reject-form').style.display='block';this.style.display='none'">✕ Reject Listing</button>
+            <button type="button" class="btn btn-danger" style="width:100%" data-show-reject-form>✕ Reject Listing</button>
           <% } else if (house.status === 'approved') { %>
-            <button type="button" class="btn btn-danger" style="width:100%" onclick="document.getElementById('reject-form').style.display='block';this.style.display='none'">Revoke Approval</button>
+            <button type="button" class="btn btn-danger" style="width:100%" data-show-reject-form>Revoke Approval</button>
           <% } %>
-          <form method="POST" action="/admin/house/<%= house.id %>/delete" onsubmit="return confirm('Delete this listing permanently? This cannot be undone.')">
+          <form method="POST" action="/admin/house/<%= house.id %>/delete"
+            data-confirm="Delete this listing permanently? This cannot be undone.">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="btn" style="width:100%;background:#6c757d">🗑 Delete Listing</button>
           </form>
@@ -60,7 +61,7 @@
           <textarea name="rejection_reason" placeholder="Describe why this listing is being rejected..."><%= house.rejection_reason || '' %></textarea>
           <div style="display:flex;gap:8px">
             <button type="submit" class="btn btn-danger btn-sm">Confirm Rejection</button>
-            <button type="button" class="btn btn-sm" style="background:#6c757d" onclick="document.getElementById('reject-form').style.display='none'">Cancel</button>
+            <button type="button" class="btn btn-sm" style="background:#6c757d" data-hide-reject-form>Cancel</button>
           </div>
         </form>
       </div>
@@ -165,11 +166,8 @@
       </table>
     </div>
   </div>
-  <% if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
+  <script src="/js/toast-init.js"></script>
+  <script src="/js/confirm.js"></script>
+  <script src="/js/admin-house-detail.js"></script>
 </body>
 </html>

@@ -10,7 +10,7 @@
   <script src="/js/skeleton.js"></script>
   <script src="/js/lightbox.js"></script>
 </head>
-<body>
+<body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-student') %>
   <div style="max-width:900px;margin:32px auto;padding:0 24px">
     <a href="/student/search" style="display:inline-block;margin-bottom:16px;color:#1B4332;text-decoration:none;font-size:14px;font-weight:500">← Back To Search</a>
@@ -171,11 +171,6 @@
       </div>
     </div>
   </div>
-  <% if (query && query.success) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.success(Toast.msg('<%= query.success %>'));});</script>
-  <% } %>
-  <% if (query && query.error) { %>
-  <script>document.addEventListener('DOMContentLoaded',function(){Toast.error(Toast.msg('<%= query.error %>'));});</script>
-  <% } %>
+  <script src="/js/toast-init.js"></script>
 </body>
 </html>

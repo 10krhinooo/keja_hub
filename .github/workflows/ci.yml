@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # No branches filter: stacked PRs (one feature branch based on another,
+  # rather than on main) need CI too, not just PRs that target main directly.
   pull_request:
-    branches: [main]
 
 # A new push to the same branch makes the in-flight run obsolete.
 concurrency:
