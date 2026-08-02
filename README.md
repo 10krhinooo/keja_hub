@@ -5,19 +5,20 @@ landlords for affordable accommodation near campus.
 
 ## Tech Stack
 
-| Layer          | Technology                              |
-| -------------- | --------------------------------------- |
-| Runtime        | Node.js                                 |
-| Framework      | Express 5                               |
-| View Engine    | EJS                                     |
-| Database       | SQLite (via sql.js, file-persisted)     |
-| Authentication | express-session + bcryptjs              |
-| File Uploads   | Multer (disk storage)                   |
-| Email          | Nodemailer over Gmail SMTP              |
-| Security       | Helmet, express-rate-limit, CSRF tokens |
-| Sessions       | session-file-store (file-backed)        |
-| CSS            | Vanilla CSS (single stylesheet)         |
-| JavaScript     | Vanilla JS (no frontend frameworks)     |
+| Layer          | Technology                                                    |
+| -------------- | ------------------------------------------------------------- |
+| Runtime        | Node.js                                                       |
+| Framework      | Express 5                                                     |
+| View Engine    | EJS                                                           |
+| Database       | SQLite (via better-sqlite3, WAL mode)                         |
+| Authentication | express-session + bcryptjs                                    |
+| File Uploads   | Multer + sharp (resize/re-encode), pluggable local/S3 storage |
+| Email          | Nodemailer over Gmail SMTP                                    |
+| Security       | Helmet, express-rate-limit, CSRF tokens                       |
+| Sessions       | session-file-store (file-backed)                              |
+| CSS            | Vanilla CSS (single stylesheet)                               |
+| JavaScript     | Vanilla JS (no frontend frameworks)                           |
+| Testing        | node:test + supertest + jsdom, 90% line coverage gate in CI   |
 
 ## Getting Started
 
@@ -79,6 +80,11 @@ Copy `.env.example` to `.env` and fill it in. The server throws on startup if
 | `NODE_ENV`       | No            | Set to `production` to enable secure cookies, `trust proxy`, HSTS, and disable demo seeding                                                                                       |
 | `SEED`           | No            | Set to `true` to force demo data even in production (staging only)                                                                                                                |
 | `DB_PATH`        | No            | Override the SQLite file location                                                                                                                                                 |
+| `STORAGE_DRIVER` | No            | `local` (default, writes to `uploads/`) or `s3`                                                                                                                                   |
+| `S3_BUCKET`      | With `s3`     | Bucket name                                                                                                                                                                       |
+| `S3_REGION`      | With `s3`     | Bucket region                                                                                                                                                                     |
+| `S3_ENDPOINT`    | No            | Custom endpoint for S3-compatible services (R2, Spaces, MinIO); leave unset for AWS                                                                                               |
+| `S3_PUBLIC_URL`  | With `s3`     | Base URL images are served from, e.g. a CDN in front of the bucket                                                                                                                |
 
 Generate a session secret with:
 
@@ -126,20 +132,26 @@ kejahub/
 │   ├── middleware/
 │   │   ├── auth.js         # requireLogin, requireRole
 │   │   ├── csrf.js         # csrfProtection (global) + csrfVerify (multipart)
-│   │   ├── upload.js       # Multer config: 5 MB/file, jpeg|png|webp
+│   │   ├── upload.js       # Multer config: 5 MB/file, jpeg|png|webp, temp dir
 │   │   └── noCache.js      # no-store headers for authenticated areas
+│   ├── storage/
+│   │   ├── index.js        # Picks local or s3 via STORAGE_DRIVER
+│   │   ├── local.js        # Disk storage under uploads/, traversal-guarded
+│   │   └── s3.js           # S3-compatible storage (AWS, R2, Spaces, MinIO)
 │   ├── utils/
-│   │   ├── validateHouse.js # Server-side listing validation + amenity list
-│   │   ├── houseImages.js   # Photo ordering, cover, cap, file cleanup
-│   │   └── mailer.js        # Gmail SMTP + branded email template
+│   │   ├── validateHouse.js   # Server-side listing validation + amenity list
+│   │   ├── houseImages.js     # Photo ordering, cover, cap, upload pipeline
+│   │   ├── imageProcessing.js # sharp resize/re-encode (main + thumbnail)
+│   │   └── mailer.js          # Gmail SMTP + branded email template
 │   ├── routes/             # authRoutes, studentRoutes, landlordRoutes, adminRoutes
-│   ├── database.js         # sql.js setup, schema, migrations, indexes, seed data
-│   └── index.js            # Express app entry point
+│   ├── database.js         # better-sqlite3 setup, schema, migrations, indexes, seed data
+│   ├── app.js               # Express app: middleware, routes, error handler
+│   └── index.js            # Bootstrap: initDB(), listen, signal handlers
 ├── frontend/
 │   ├── public/
 │   │   ├── css/style.css   # Global stylesheet + design tokens
 │   │   ├── js/             # toast.js, validation.js, photo-manager.js,
-│   │   │                   # lightbox.js, skeleton.js, dates.js
+│   │   │                   # lightbox.js, skeleton.js, dates.js, confirm.js, nav.js
 │   │   └── images/         # Static images
 │   └── views/
 │       ├── auth/           # login, register, forgot-password, reset-password
@@ -149,7 +161,13 @@ kejahub/
 │       ├── partials/       # nav-student, nav-landlord, nav-admin
 │       ├── home.ejs
 │       └── 404.ejs
-├── uploads/houses/         # Landlord-uploaded photos (runtime, gitignored)
+├── tests/
+│   ├── unit/               # Pure functions and middleware, run against a real in-memory db
+│   ├── integration/        # supertest against the full app, one file per controller
+│   ├── frontend/           # jsdom-driven tests for frontend/public/js/**
+│   └── helpers/            # Shared test app bootstrap, agent, fixtures
+├── .github/workflows/ci.yml # Lint, test with a 90%/75% coverage gate, dependency audit
+├── uploads/houses/         # Landlord-uploaded photos (runtime, gitignored, local driver only)
 ├── .sessions/              # File-backed session store (runtime, gitignored)
 ├── .env                    # Environment variables (not committed)
 ├── .env.example            # Template with every supported variable
@@ -176,12 +194,31 @@ Enforced server-side: a maximum of **10 photos per listing** (not per upload),
 filtered to ones belonging to that listing, so a crafted POST cannot touch
 another landlord's photos. Files uploaded during a failed submission are
 deleted rather than orphaned, and deleting a listing, as landlord _or_ admin,
-removes its files from disk.
+removes its files (and thumbnails) from storage.
+
+Every upload is resized and re-encoded before it is stored: EXIF is stripped,
+the long edge capped at 1600px, re-encoded to webp at quality 80, plus a
+400px thumbnail used on dashboard, search and booking cards. Storage itself
+goes through `backend/storage`, which is either the local filesystem or an
+S3-compatible bucket, chosen with `STORAGE_DRIVER` (see Environment Variables).
 
 `house_images.sort_order` stores the display order; `is_primary` flags the
 cover. Every query selects the cover as
 `ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1`, so a listing always
 has a thumbnail even if the flagged cover was deleted.
+
+## Development
+
+```bash
+npm test              # full suite: unit, integration, frontend
+npm run test:coverage # same, plus a per-file coverage table
+npm run lint           # eslint
+npm run format          # prettier --write
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, prettier, the test suite on Node 22
+and 24 with a 90% line / 75% branch coverage gate, and `npm audit` on every
+push and pull request against `main`.
 
 **Admin review happens once, at creation.** Later edits, including photo
 changes, go live immediately and stay visible to students. Editing a
