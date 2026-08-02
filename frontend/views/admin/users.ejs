@@ -14,15 +14,24 @@
     .tab-btn.active { color:#1B4332; border-bottom-color:#1B4332; }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
+    .pagination { display:flex; gap:4px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+    .pagination a { display:inline-block; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; background:white; color:#3D4F47; border:1px solid #D4E6DB; transition:all .15s; }
+    .pagination a:hover { background:#EEF5F0; border-color:#52B788; }
+    .pagination a.pg-active { background:#1B4332; color:white; border-color:#1B4332; }
   </style>
 </head>
+<%
+  // The tab bar is client-side only (tabs.js), so a page reload from a
+  // pagination link needs the server to pick the tab that link belongs to.
+  var initialTab = (query && query.landlord_page) ? 'landlords' : 'students';
+%>
 <body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-admin') %>
   <div style="max-width:1000px;margin:32px auto;padding:0 24px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div>
         <h2 style="font-size:20px;font-weight:700;color:#1a1a2e">Manage Users</h2>
-        <p style="font-size:13px;color:#666;margin-top:2px"><%= students.length %> student(s) · <%= landlords.length %> landlord(s)</p>
+        <p style="font-size:13px;color:#666;margin-top:2px"><%= students.totalCount %> student(s) · <%= landlords.totalCount %> landlord(s)</p>
       </div>
     </div>
 
@@ -37,23 +46,23 @@
 
     <!-- Tabs -->
     <div class="tab-bar" data-tab-group>
-      <button class="tab-btn active" data-tab-target="students">Students (<%= students.length %>)</button>
-      <button class="tab-btn"        data-tab-target="landlords">Landlords (<%= landlords.length %>)</button>
+      <button class="tab-btn <%= initialTab==='students'?'active':'' %>" data-tab-target="students">Students (<%= students.totalCount %>)</button>
+      <button class="tab-btn <%= initialTab==='landlords'?'active':'' %>" data-tab-target="landlords">Landlords (<%= landlords.totalCount %>)</button>
     </div>
 
     <!-- Students tab -->
-    <div id="tab-students" class="tab-panel active">
+    <div id="tab-students" class="tab-panel <%= initialTab==='students'?'active':'' %>">
       <div class="table-wrap">
         <table>
           <thead>
             <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr>
           </thead>
           <tbody>
-            <% if (students.length === 0) { %>
+            <% if (students.rows.length === 0) { %>
               <tr><td colspan="5" style="text-align:center;color:#999;padding:32px">No students found</td></tr>
             <% } else { %>
-              <% for (var i = 0; i < students.length; i++) { %>
-                <% var u = students[i]; %>
+              <% for (var i = 0; i < students.rows.length; i++) { %>
+                <% var u = students.rows[i]; %>
                 <tr>
                   <td><%= u.name %></td>
                   <td><%= u.email %></td>
@@ -81,21 +90,34 @@
           </tbody>
         </table>
       </div>
+      <% if (students.totalPages > 1) { %>
+        <div class="pagination">
+          <% if (students.page > 1) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&student_page=<%= students.page-1 %>#tab-students">‹ Prev</a>
+          <% } %>
+          <% for (var sp = Math.max(1, students.page-2); sp <= Math.min(students.totalPages, students.page+2); sp++) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&student_page=<%= sp %>#tab-students" class="<%= sp===students.page?'pg-active':'' %>"><%= sp %></a>
+          <% } %>
+          <% if (students.page < students.totalPages) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&student_page=<%= students.page+1 %>#tab-students">Next ›</a>
+          <% } %>
+        </div>
+      <% } %>
     </div>
 
     <!-- Landlords tab -->
-    <div id="tab-landlords" class="tab-panel">
+    <div id="tab-landlords" class="tab-panel <%= initialTab==='landlords'?'active':'' %>">
       <div class="table-wrap">
         <table>
           <thead>
             <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr>
           </thead>
           <tbody>
-            <% if (landlords.length === 0) { %>
+            <% if (landlords.rows.length === 0) { %>
               <tr><td colspan="5" style="text-align:center;color:#999;padding:32px">No landlords found</td></tr>
             <% } else { %>
-              <% for (var j = 0; j < landlords.length; j++) { %>
-                <% var ll = landlords[j]; %>
+              <% for (var j = 0; j < landlords.rows.length; j++) { %>
+                <% var ll = landlords.rows[j]; %>
                 <tr>
                   <td><%= ll.name %></td>
                   <td><%= ll.email %></td>
@@ -123,6 +145,19 @@
           </tbody>
         </table>
       </div>
+      <% if (landlords.totalPages > 1) { %>
+        <div class="pagination">
+          <% if (landlords.page > 1) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&landlord_page=<%= landlords.page-1 %>#tab-landlords">‹ Prev</a>
+          <% } %>
+          <% for (var lp = Math.max(1, landlords.page-2); lp <= Math.min(landlords.totalPages, landlords.page+2); lp++) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&landlord_page=<%= lp %>#tab-landlords" class="<%= lp===landlords.page?'pg-active':'' %>"><%= lp %></a>
+          <% } %>
+          <% if (landlords.page < landlords.totalPages) { %>
+            <a href="/admin/users?keyword=<%= encodeURIComponent(keyword) %>&landlord_page=<%= landlords.page+1 %>#tab-landlords">Next ›</a>
+          <% } %>
+        </div>
+      <% } %>
     </div>
   </div>
 

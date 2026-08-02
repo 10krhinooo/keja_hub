@@ -377,6 +377,8 @@ describe('houseImages', () => {
       const bad = tempUpload('bad.jpg', Buffer.from('not an image'));
 
       await assert.rejects(() => processAndStoreUploads([good, bad]));
+      // The rollback's storage.remove() calls are fire-and-forget.
+      await settle();
 
       // The good file's outputs must not be left behind after the rollback.
       const leftover = fs

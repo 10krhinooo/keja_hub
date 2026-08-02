@@ -13,6 +13,8 @@ const {
   nextSortOrder,
 } = require('../utils/houseImages');
 
+const PER_PAGE = 15;
+
 // A listing always needs a cover image, even if the flagged primary was deleted,
 // falling back to sort order keeps thumbnails from silently going blank.
 const PRIMARY_IMAGE_SQL = `
@@ -30,6 +32,16 @@ function parseIdList(value) {
 const dashboard = (req, res) => {
   try {
     const db = getDB();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+
+    const totalCount =
+      db.prepare(`SELECT COUNT(*) FROM houses WHERE landlord_id = ?`).get(req.session.user.id)[
+        'COUNT(*)'
+      ] || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * PER_PAGE;
+
     const houses = db
       .prepare(
         `
@@ -40,10 +52,18 @@ const dashboard = (req, res) => {
       WHERE h.landlord_id = ?
       GROUP BY h.id
       ORDER BY h.created_at DESC
+      LIMIT ? OFFSET ?
     `
       )
-      .all(req.session.user.id);
-    res.render('landlord/dashboard', { houses, query: req.query });
+      .all(req.session.user.id, PER_PAGE, offset);
+
+    res.render('landlord/dashboard', {
+      houses,
+      page: safePage,
+      totalPages,
+      totalCount,
+      query: req.query,
+    });
   } catch (err) {
     console.error('Landlord dashboard error:', err);
     res.status(500).send('Something went wrong. Please try again.');
