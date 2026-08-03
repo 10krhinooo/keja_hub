@@ -18,6 +18,7 @@ landlords for affordable accommodation near campus.
 | Sessions       | session-file-store (file-backed)                              |
 | CSS            | Vanilla CSS (single stylesheet)                               |
 | JavaScript     | Vanilla JS (no frontend frameworks)                           |
+| Logging        | Structured JSON via `backend/utils/logger.js`, per-request id |
 | Testing        | node:test + supertest + jsdom, 90% line coverage gate in CI   |
 
 ## Getting Started
@@ -51,15 +52,6 @@ The app runs at `http://localhost:3000` (configurable via `PORT` in `.env`).
 > shares a single password. Set `SEED_PASSWORD` in `.env` to choose it; leave it
 > unset and a random one is generated and printed to the console on first run.
 
-### Production checklist
-
-- [ ] `NODE_ENV=production`, which enables secure cookies, `trust proxy`, HSTS, and blocks demo seeding
-- [ ] `SESSION_SECRET` set to 32+ random characters
-- [ ] `ADMIN_PASSWORD` set **before** the database is first created
-- [ ] `APP_URL` set to the public URL, or reset links point at localhost
-- [ ] `SMTP_PASS` set, or password reset silently does nothing for users
-- [ ] Persistent storage mounted for `uploads/`, `.sessions/`, and the `.db` file
-
 Health check: `GET /healthz` returns `{"status":"ok","uptime":…}`.
 
 ## Environment Variables
@@ -92,9 +84,18 @@ Generate a session secret with:
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+### Email verification
+
+New registrations start with `email_verified = 0` and are redirected to
+`/verify-email/pending` until they click the link. Student and landlord routes
+are gated behind `requireVerified`, so an unverified user can log in but
+cannot use the app until they verify. Booking activity also sends mail:
+requesting a viewing or booking notifies the landlord, and accepting or
+declining notifies the student. Seeded demo accounts are pre-verified.
+
 ### Email setup (Gmail SMTP)
 
-Password reset is the only transactional email today.
+Password reset, email verification, and booking notifications are sent this way.
 
 1. On the sending Google account, enable **2-Step Verification**.
 2. Create an **App Password** at <https://myaccount.google.com/apppasswords>
@@ -144,7 +145,8 @@ kejahub/
 │   │   ├── imageProcessing.js # sharp resize/re-encode (main + thumbnail)
 │   │   └── mailer.js          # Gmail SMTP + branded email template
 │   ├── routes/             # authRoutes, studentRoutes, landlordRoutes, adminRoutes
-│   ├── database.js         # better-sqlite3 setup, schema, migrations, indexes, seed data
+│   ├── migrations/         # Versioned schema migrations, tracked in schema_migrations
+│   ├── database.js         # better-sqlite3 setup, base schema, indexes, seed data, runs migrations
 │   ├── app.js               # Express app: middleware, routes, error handler
 │   └── index.js            # Bootstrap: initDB(), listen, signal handlers
 ├── frontend/
