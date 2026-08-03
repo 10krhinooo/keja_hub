@@ -165,6 +165,14 @@ describe('student', () => {
       assert.equal(res.headers.location, '/student/search');
     });
 
+    test('paginates the review list and clamps an out-of-range page', async () => {
+      const client = await loginAs(app, 'student');
+      const houseId = approvedHouse().id;
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=2`)).status, 200);
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=9999`)).status, 200);
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=0`)).status, 200);
+    });
+
     test('redirects for an unknown id', async () => {
       const client = await loginAs(app, 'student');
       const res = await client.get('/student/house/9999999');

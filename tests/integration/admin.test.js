@@ -281,6 +281,15 @@ describe('admin', () => {
 
       await admin.post(`/admin/users/${brian.id}/toggle`, {}, '/admin/users');
     });
+
+    test('paginates students and landlords independently, clamping out-of-range pages', async () => {
+      const admin = await loginAs(app, 'admin');
+      assert.equal((await admin.get('/admin/users?student_page=2')).status, 200);
+      assert.equal((await admin.get('/admin/users?student_page=9999')).status, 200);
+      assert.equal((await admin.get('/admin/users?student_page=0')).status, 200);
+      assert.equal((await admin.get('/admin/users?landlord_page=2')).status, 200);
+      assert.equal((await admin.get('/admin/users?landlord_page=9999')).status, 200);
+    });
   });
 
   describe('reports', () => {
@@ -322,6 +331,13 @@ describe('admin', () => {
       const admin = await loginAs(app, 'admin');
       const res = await admin.post('/admin/reports/abc/resolve', {}, '/admin/reports');
       assert.equal(res.headers.location, '/admin/reports');
+    });
+
+    test('paginates and clamps an out-of-range page', async () => {
+      const admin = await loginAs(app, 'admin');
+      assert.equal((await admin.get('/admin/reports?page=2')).status, 200);
+      assert.equal((await admin.get('/admin/reports?page=9999')).status, 200);
+      assert.equal((await admin.get('/admin/reports?page=0')).status, 200);
     });
   });
 

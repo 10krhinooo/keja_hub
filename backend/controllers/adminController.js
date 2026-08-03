@@ -307,7 +307,9 @@ const manageUsers = (req, res) => {
     const db = getDB();
     const keyword = (req.query.keyword || '').trim();
 
-    const buildQuery = (role) => {
+    // Each tab paginates independently, since a student list page has no
+    // relationship to how far a landlord list has been paged.
+    const buildPage = (role, pageParam) => {
       const conds = [`role = ?`];
       const params = [role];
       if (keyword) {
@@ -315,13 +317,23 @@ const manageUsers = (req, res) => {
         const kw = `%${keyword}%`;
         params.push(kw, kw);
       }
-      return db
-        .prepare(`SELECT * FROM users WHERE ${conds.join(' AND ')} ORDER BY created_at DESC`)
-        .all(...params);
+      const whereClause = `WHERE ${conds.join(' AND ')}`;
+
+      const totalCount =
+        db.prepare(`SELECT COUNT(*) FROM users ${whereClause}`).get(...params)['COUNT(*)'] || 0;
+      const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+      const page = Math.min(Math.max(1, parseInt(req.query[pageParam], 10) || 1), totalPages);
+      const offset = (page - 1) * PER_PAGE;
+
+      const rows = db
+        .prepare(`SELECT * FROM users ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+        .all(...params, PER_PAGE, offset);
+
+      return { rows, page, totalPages, totalCount };
     };
 
-    const students = buildQuery('student');
-    const landlords = buildQuery('landlord');
+    const students = buildPage('student', 'student_page');
+    const landlords = buildPage('landlord', 'landlord_page');
 
     res.render('admin/users', { students, landlords, keyword, query: req.query });
   } catch (err) {
@@ -349,6 +361,7 @@ const manageReports = (req, res) => {
   try {
     const db = getDB();
     const status = req.query.status || '';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const conditions = [];
     const params = [];
     if (status && ['open', 'resolved'].includes(status)) {
@@ -356,6 +369,20 @@ const manageReports = (req, res) => {
       params.push(status);
     }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const totalCount =
+      db
+        .prepare(
+          `SELECT COUNT(*) FROM reports r
+           JOIN houses h ON r.house_id = h.id
+           JOIN users u ON r.reported_by = u.id
+           ${whereClause}`
+        )
+        .get(...params)['COUNT(*)'] || 0;
+    const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+    const safePage = Math.min(page, totalPages);
+    const offset = (safePage - 1) * PER_PAGE;
+
     const reports = db
       .prepare(
         `
@@ -365,10 +392,19 @@ const manageReports = (req, res) => {
       JOIN users u ON r.reported_by = u.id
       ${whereClause}
       ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
     `
       )
-      .all(...params);
-    res.render('admin/reports', { reports, status, query: req.query });
+      .all(...params, PER_PAGE, offset);
+
+    res.render('admin/reports', {
+      reports,
+      status,
+      page: safePage,
+      totalPages,
+      totalCount,
+      query: req.query,
+    });
   } catch (err) {
     console.error('Manage reports error:', err);
     res.status(500).send('Something went wrong. Please try again.');
