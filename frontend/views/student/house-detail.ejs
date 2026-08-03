@@ -65,7 +65,12 @@
       <div class="card">
         <h3 class="card-h3">Landlord Contact</h3>
         <div class="info-box">
-          <p class="info-line"><strong>Name:</strong> <%= landlord.name %></p>
+          <p class="info-line">
+            <strong>Name:</strong> <%= landlord.name %>
+            <% if (landlord.is_verified) { %>
+              <span class="verified-badge">· ✓ Verified</span>
+            <% } %>
+          </p>
           <p class="info-line-tight"><strong>Phone:</strong> <%= landlord.phone ? landlord.phone : 'Not provided' %></p>
         </div>
       </div>
@@ -106,8 +111,8 @@
         <% } %>
       </div>
 
-      <div class="card">
-        <h3 class="card-h3">Reviews (<%= reviews.length %>)</h3>
+      <div class="card" id="reviews">
+        <h3 class="card-h3">Reviews (<%= reviewCount %>)</h3>
         <% if (reviews.length === 0) { %>
           <p class="muted-text">No reviews yet. Be the first to review!</p>
         <% } else { %>
@@ -123,6 +128,19 @@
               <% } %>
             </div>
           <% } %>
+        <% } %>
+        <% if (reviewTotalPages > 1) { %>
+          <div class="pagination">
+            <% if (reviewPage > 1) { %>
+              <a href="?review_page=<%= reviewPage-1 %>#reviews">‹ Prev</a>
+            <% } %>
+            <% for (var rp = Math.max(1, reviewPage-2); rp <= Math.min(reviewTotalPages, reviewPage+2); rp++) { %>
+              <a href="?review_page=<%= rp %>#reviews" class="<%= rp===reviewPage?'pg-active':'' %>"><%= rp %></a>
+            <% } %>
+            <% if (reviewPage < reviewTotalPages) { %>
+              <a href="?review_page=<%= reviewPage+1 %>#reviews">Next ›</a>
+            <% } %>
+          </div>
         <% } %>
         <div class="divider-section">
           <h3 class="card-h3-sm mb-12">Leave A Review</h3>

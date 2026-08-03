@@ -166,6 +166,14 @@ describe('student', () => {
       assert.equal(res.headers.location, '/student/search');
     });
 
+    test('paginates the review list and clamps an out-of-range page', async () => {
+      const client = await loginAs(app, 'student');
+      const houseId = approvedHouse().id;
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=2`)).status, 200);
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=9999`)).status, 200);
+      assert.equal((await client.get(`/student/house/${houseId}?review_page=0`)).status, 200);
+    });
+
     test('redirects for an unknown id', async () => {
       const client = await loginAs(app, 'student');
       const res = await client.get('/student/house/9999999');
@@ -178,6 +186,23 @@ describe('student', () => {
       if (!pending) return;
       const res = await client.get(`/student/house/${pending.id}`);
       assert.equal(res.status, 302);
+    });
+
+    test('shows a verified badge only when the landlord is verified', async () => {
+      const client = await loginAs(app, 'student');
+      const house = approvedHouse();
+
+      db.prepare(`UPDATE landlord_profiles SET is_verified = 0 WHERE user_id = ?`).run(
+        house.landlord_id
+      );
+      const unverified = await client.get(`/student/house/${house.id}`);
+      assert.doesNotMatch(unverified.text, /Verified/);
+
+      db.prepare(`UPDATE landlord_profiles SET is_verified = 1 WHERE user_id = ?`).run(
+        house.landlord_id
+      );
+      const verified = await client.get(`/student/house/${house.id}`);
+      assert.match(verified.text, /Verified/);
     });
   });
 

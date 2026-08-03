@@ -4,6 +4,8 @@ const { sendBookingRequestEmail } = require('../utils/mailer');
 const { buildBaseUrl } = require('../utils/url');
 const logger = require('../utils/logger');
 
+const REVIEWS_PER_PAGE = 10;
+
 const dashboard = (req, res) => {
   try {
     const db = getDB();
@@ -174,6 +176,13 @@ const viewHouse = (req, res) => {
 
     const amenities = db.prepare(`SELECT * FROM amenities WHERE house_id = ?`).all(houseId);
 
+    const reviewPage = Math.max(1, parseInt(req.query.review_page, 10) || 1);
+    const reviewCount =
+      db.prepare(`SELECT COUNT(*) FROM reviews WHERE house_id = ?`).get(houseId)['COUNT(*)'] || 0;
+    const reviewTotalPages = Math.max(1, Math.ceil(reviewCount / REVIEWS_PER_PAGE));
+    const safeReviewPage = Math.min(reviewPage, reviewTotalPages);
+    const reviewOffset = (safeReviewPage - 1) * REVIEWS_PER_PAGE;
+
     const reviews = db
       .prepare(
         `
@@ -181,9 +190,10 @@ const viewHouse = (req, res) => {
       FROM reviews r JOIN users u ON r.student_id = u.id
       WHERE r.house_id = ?
       ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
     `
       )
-      .all(houseId);
+      .all(houseId, REVIEWS_PER_PAGE, reviewOffset);
 
     const { avg: avgRaw } = db
       .prepare(`SELECT AVG(rating) as avg FROM reviews WHERE house_id = ?`)
@@ -194,7 +204,7 @@ const viewHouse = (req, res) => {
       db
         .prepare(
           `
-      SELECT u.name, lp.phone
+      SELECT u.name, lp.phone, lp.is_verified
       FROM users u
       LEFT JOIN landlord_profiles lp ON u.id = lp.user_id
       WHERE u.id = ?
@@ -217,6 +227,9 @@ const viewHouse = (req, res) => {
       images,
       amenities,
       reviews,
+      reviewCount,
+      reviewPage: safeReviewPage,
+      reviewTotalPages,
       avgRating,
       landlord,
       existingBooking: existingBooking || null,
