@@ -65,18 +65,21 @@ describe('logger', () => {
   });
 
   describe('quiet gate', () => {
-    // logger.info/warn/error no-op under NODE_ENV=test (the gate every test in
-    // this suite runs under), matching database.js's isQuiet() precedent.
-    // Flip it off just for this block to assert the emitting side too.
+    // logger.info/warn/error no-op under NODE_ENV=test, matching database.js's
+    // isQuiet() precedent. Each test here sets NODE_ENV itself rather than
+    // relying on ambient state, since test files run in isolated processes.
     test('does not write to the console under NODE_ENV=test', () => {
-      let called = false;
+      const originalEnv = process.env.NODE_ENV;
       const original = console.log;
+      let called = false;
       console.log = () => {
         called = true;
       };
+      process.env.NODE_ENV = 'test';
       try {
         logger.info('quiet please');
       } finally {
+        process.env.NODE_ENV = originalEnv;
         console.log = original;
       }
       assert.equal(called, false);
