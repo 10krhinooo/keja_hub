@@ -8,47 +8,40 @@
   <script src="/js/toast.js"></script>
   <script src="/js/dates.js"></script>
   <script src="/js/lightbox.js"></script>
-  <style>
-    .reject-form { display:none; margin-top:10px; }
-    .reject-form textarea { width:100%; height:70px; padding:8px; border:1.5px solid #e0e0e0; border-radius:6px; font-size:13px; resize:vertical; font-family:inherit; margin-bottom:6px; }
-    .table-wrap { overflow-x:auto; }
-    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
-    @media (max-width:600px) { .detail-grid { grid-template-columns:1fr; } }
-  </style>
 </head>
 <body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-admin') %>
-  <div style="max-width:1000px;margin:32px auto;padding:0 24px">
-    <a href="/admin/dashboard" style="display:inline-block;margin-bottom:16px;color:#1B4332;text-decoration:none;font-size:14px;font-weight:500">← Back To Dashboard</a>
+  <div class="page-container page-container--wide">
+    <a href="/admin/dashboard" class="back-link">← Back To Dashboard</a>
 
     <!-- Header card -->
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div class="header-row">
         <div>
-          <h2 style="font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:6px"><%= house.title %></h2>
-          <p style="color:#666;font-size:14px;margin-bottom:4px">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
-          <p style="color:#666;font-size:14px;margin-bottom:8px">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
-          <div style="font-size:24px;color:#1B4332;font-weight:700;margin-bottom:8px">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
+          <h2 class="detail-title--compact"><%= house.title %></h2>
+          <p class="meta-line">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+          <p class="meta-line mb-8">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+          <div class="price-display--admin">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
           <span class="badge badge-<%= house.status %>"><%= house.status.charAt(0).toUpperCase() + house.status.slice(1) %></span>
           <% if (avgRating) { %>
-            <span style="margin-left:10px;color:#f57f17;font-size:14px;font-weight:600">★ <%= avgRating %></span>
+            <span class="rating-badge">★ <%= avgRating %></span>
           <% } %>
         </div>
         <!-- Action buttons -->
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px">
+        <div class="action-col">
           <% if (house.status === 'pending') { %>
             <form method="POST" action="/admin/house/<%= house.id %>/approve">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn btn-success" style="width:100%">✓ Approve Listing</button>
+              <button class="btn btn-success btn-block">✓ Approve Listing</button>
             </form>
-            <button type="button" class="btn btn-danger" style="width:100%" data-show-reject-form>✕ Reject Listing</button>
+            <button type="button" class="btn btn-danger btn-block" data-show-reject-form>✕ Reject Listing</button>
           <% } else if (house.status === 'approved') { %>
-            <button type="button" class="btn btn-danger" style="width:100%" data-show-reject-form>Revoke Approval</button>
+            <button type="button" class="btn btn-danger btn-block" data-show-reject-form>Revoke Approval</button>
           <% } %>
           <form method="POST" action="/admin/house/<%= house.id %>/delete"
             data-confirm="Delete this listing permanently? This cannot be undone.">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="btn" style="width:100%;background:#6c757d">🗑 Delete Listing</button>
+            <button class="btn btn-block btn-muted">🗑 Delete Listing</button>
           </form>
         </div>
       </div>
@@ -59,53 +52,53 @@
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <label>Rejection Reason (shown to landlord)</label>
           <textarea name="rejection_reason" placeholder="Describe why this listing is being rejected..."><%= house.rejection_reason || '' %></textarea>
-          <div style="display:flex;gap:8px">
+          <div class="inline-actions">
             <button type="submit" class="btn btn-danger btn-sm">Confirm Rejection</button>
-            <button type="button" class="btn btn-sm" style="background:#6c757d" data-hide-reject-form>Cancel</button>
+            <button type="button" class="btn btn-sm btn-muted" data-hide-reject-form>Cancel</button>
           </div>
         </form>
       </div>
 
       <% if (house.status === 'rejected' && house.rejection_reason) { %>
-        <div class="alert alert-error" style="margin-top:12px"><strong>Rejection Reason:</strong> <%= house.rejection_reason %></div>
+        <div class="alert alert-error mt-12"><strong>Rejection Reason:</strong> <%= house.rejection_reason %></div>
       <% } %>
     </div>
 
     <!-- Landlord & Details -->
     <div class="detail-grid">
-      <div class="card" style="margin-bottom:0">
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Landlord Info</h3>
-        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Name:</strong> <%= house.landlord_name %></p>
-        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Email:</strong> <a href="mailto:<%= house.landlord_email %>" style="color:#1B4332"><%= house.landlord_email %></a></p>
-        <p style="font-size:14px;color:#444"><strong>Phone:</strong> <%= house.landlord_phone || 'Not provided' %></p>
+      <div class="card mb-0">
+        <h3 class="card-h3-sm mb-12">Landlord Info</h3>
+        <p class="info-line"><strong>Name:</strong> <%= house.landlord_name %></p>
+        <p class="info-line"><strong>Email:</strong> <a href="mailto:<%= house.landlord_email %>" class="link-forest"><%= house.landlord_email %></a></p>
+        <p class="info-line-tight"><strong>Phone:</strong> <%= house.landlord_phone || 'Not provided' %></p>
       </div>
-      <div class="card" style="margin-bottom:0">
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Listing Stats</h3>
-        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Total Bookings:</strong> <%= bookings.length %></p>
-        <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Total Reviews:</strong> <%= reviews.length %></p>
-        <p style="font-size:14px;color:#444"><strong>Avg Rating:</strong> <%= avgRating ? '★ ' + avgRating : 'No reviews yet' %></p>
+      <div class="card mb-0">
+        <h3 class="card-h3-sm mb-12">Listing Stats</h3>
+        <p class="info-line"><strong>Total Bookings:</strong> <%= bookings.length %></p>
+        <p class="info-line"><strong>Total Reviews:</strong> <%= reviews.length %></p>
+        <p class="info-line-tight"><strong>Avg Rating:</strong> <%= avgRating ? '★ ' + avgRating : 'No reviews yet' %></p>
       </div>
     </div>
 
     <!-- Description, Amenities, Photos -->
     <div class="card">
       <% if (house.description) { %>
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:8px">Description</h3>
-        <p style="color:#555;font-size:14px;line-height:1.7;margin-bottom:16px"><%= house.description %></p>
+        <h3 class="card-h3-sm mb-8">Description</h3>
+        <p class="description-text mb-16"><%= house.description %></p>
       <% } %>
       <% if (amenities.length > 0) { %>
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:8px">Amenities</h3>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <h3 class="card-h3-sm mb-8">Amenities</h3>
+        <div class="chip-row mb-16">
           <% for (var i = 0; i < amenities.length; i++) { %>
-            <span style="background:#E8F5EE;color:#1B4332;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500"><%= amenities[i].name %></span>
+            <span class="amenity-chip"><%= amenities[i].name %></span>
           <% } %>
         </div>
       <% } %>
       <% if (images.length > 0) { %>
-        <h3 style="font-size:16px;font-weight:600;margin-bottom:8px">Photos (<%= images.length %>)</h3>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        <h3 class="card-h3-sm mb-8">Photos (<%= images.length %>)</h3>
+        <div class="photo-grid photo-grid--admin">
           <% for (var j = 0; j < images.length; j++) { %>
-            <img src="<%= images[j].image_path %>" alt="Photo" class="lb-trigger" data-full="<%= images[j].image_path %>" style="width:100%;height:140px;object-fit:cover;border-radius:8px">
+            <img src="<%= images[j].image_path %>" alt="Photo" class="lb-trigger photo-tile photo-tile--admin" data-full="<%= images[j].image_path %>">
           <% } %>
         </div>
       <% } %>
@@ -113,22 +106,22 @@
 
     <!-- Booking Requests -->
     <h2 class="section-heading">Booking Requests (<%= bookings.length %>)</h2>
-    <div class="table-wrap" style="margin-bottom:8px">
+    <div class="table-wrap mb-8">
       <table>
         <thead>
           <tr><th>Student</th><th>Type</th><th>Visit Date</th><th>Message</th><th>Status</th><th>Created</th></tr>
         </thead>
         <tbody>
           <% if (bookings.length === 0) { %>
-            <tr><td colspan="6" style="text-align:center;color:#999;padding:24px">No booking requests yet</td></tr>
+            <tr><td colspan="6" class="table-empty">No booking requests yet</td></tr>
           <% } else { %>
             <% for (var k = 0; k < bookings.length; k++) { %>
               <% var bk = bookings[k]; %>
               <tr>
-                <td><%= bk.student_name %><br><span style="color:#999;font-size:11px"><%= bk.student_email %></span></td>
+                <td><%= bk.student_name %><br><span class="subtext"><%= bk.student_email %></span></td>
                 <td><%= bk.type.charAt(0).toUpperCase() + bk.type.slice(1) %></td>
                 <td><span class="date-val"><%= bk.visit_date || '-' %></span></td>
-                <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= bk.message || '-' %></td>
+                <td class="cell-truncate"><%= bk.message || '-' %></td>
                 <td><span class="badge badge-<%= bk.status %>"><%= bk.status.charAt(0).toUpperCase() + bk.status.slice(1) %></span></td>
                 <td><span class="date-val"><%= bk.created_at %></span></td>
               </tr>
@@ -140,24 +133,24 @@
 
     <!-- Reviews -->
     <h2 class="section-heading">Reviews (<%= reviews.length %>)</h2>
-    <div class="table-wrap" style="margin-bottom:32px">
+    <div class="table-wrap mb-32">
       <table>
         <thead>
           <tr><th>Student</th><th>Rating</th><th>Comment</th><th>Date</th></tr>
         </thead>
         <tbody>
           <% if (reviews.length === 0) { %>
-            <tr><td colspan="4" style="text-align:center;color:#999;padding:24px">No reviews yet</td></tr>
+            <tr><td colspan="4" class="table-empty">No reviews yet</td></tr>
           <% } else { %>
             <% for (var m = 0; m < reviews.length; m++) { %>
               <% var rv = reviews[m]; %>
               <tr>
                 <td><%= rv.student_name %></td>
-                <td style="color:#f57f17;font-weight:600">
+                <td class="rating-inline">
                   <% for (var s = 0; s < rv.rating; s++) { %>★<% } %>
-                  <span style="color:#666;font-weight:400;font-size:12px"> (<%= rv.rating %>/5)</span>
+                  <span class="rating-inline-sub"> (<%= rv.rating %>/5)</span>
                 </td>
-                <td style="max-width:300px"><%= rv.comment || '-' %></td>
+                <td class="cell-comment"><%= rv.comment || '-' %></td>
                 <td><span class="date-val"><%= rv.created_at %></span></td>
               </tr>
             <% } %>

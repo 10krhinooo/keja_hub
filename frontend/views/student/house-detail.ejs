@@ -12,21 +12,21 @@
 </head>
 <body data-toast-success="<%= (query && query.success) || '' %>" data-toast-error="<%= (query && query.error) || '' %>">
   <%- include('../partials/nav-student') %>
-  <div style="max-width:900px;margin:32px auto;padding:0 24px">
-    <a href="/student/search" style="display:inline-block;margin-bottom:16px;color:#1B4332;text-decoration:none;font-size:14px;font-weight:500">← Back To Search</a>
+  <div class="page-container">
+    <a href="/student/search" class="back-link">← Back To Search</a>
 
     <!-- Skeleton for house detail -->
     <div class="skeleton-placeholder">
       <div class="card">
-        <div class="skeleton skeleton-line" style="height:24px;width:65%;margin:0 0 12px"></div>
-        <div class="skeleton skeleton-line short" style="margin:0 0 6px"></div>
-        <div class="skeleton skeleton-line short" style="margin:0 0 6px"></div>
-        <div class="skeleton skeleton-line" style="height:32px;width:40%;margin:12px 0"></div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px">
-          <% for(var si=0;si<3;si++){%><div class="skeleton" style="height:160px;border-radius:10px"></div><%}%>
+        <div class="skeleton skeleton-line skel-title-lg"></div>
+        <div class="skeleton skeleton-line short skel-mb-6"></div>
+        <div class="skeleton skeleton-line short skel-mb-6"></div>
+        <div class="skeleton skeleton-line skel-price"></div>
+        <div class="skel-photo-grid">
+          <% for(var si=0;si<3;si++){%><div class="skeleton skel-photo-tile"></div><%}%>
         </div>
-        <div style="display:flex;gap:8px;margin-top:16px">
-          <% for(var ai=0;ai<4;ai++){%><div class="skeleton" style="height:26px;width:70px;border-radius:99px"></div><%}%>
+        <div class="skel-chip-row">
+          <% for(var ai=0;ai<4;ai++){%><div class="skeleton skel-chip"></div><%}%>
         </div>
       </div>
     </div>
@@ -34,57 +34,57 @@
     <!-- Real content -->
     <div class="skeleton-content" style="display:none">
       <div class="card">
-        <h2 style="font-size:24px;font-weight:700;color:#1a1a2e;margin-bottom:8px"><%= house.title %></h2>
-        <p style="color:#666;font-size:14px;margin-bottom:4px">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
-        <p style="color:#666;font-size:14px;margin-bottom:4px">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
+        <h2 class="detail-title"><%= house.title %></h2>
+        <p class="meta-line">📍 <%= house.location %><% if (house.estate) { %>, <%= house.estate %><% } %></p>
+        <p class="meta-line">🛏 <%= house.bedrooms %> Bedroom(s) &nbsp; 🚿 <%= house.bathrooms %> Bathroom(s)</p>
         <% if (avgRating) { %>
-          <p style="color:#f57f17;font-size:14px;margin-bottom:4px">★ <%= avgRating %> Average Rating</p>
+          <p class="rating-line">★ <%= avgRating %> Average Rating</p>
         <% } %>
-        <div style="font-size:28px;color:#C97D3A;font-weight:700;margin:12px 0">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
+        <div class="price-display--student">KES <%= Number(house.rent).toLocaleString() %>/Month</div>
         <% if (house.description) { %>
-          <p style="color:#555;font-size:14px;line-height:1.7;margin-top:8px"><%= house.description %></p>
+          <p class="description-text mt-8"><%= house.description %></p>
         <% } %>
         <% if (amenities.length > 0) { %>
-          <p style="margin-top:20px;font-weight:600;font-size:14px;color:#1a1a2e">Amenities</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+          <p class="section-label mt-20">Amenities</p>
+          <div class="chip-row mt-8">
             <% for (var i = 0; i < amenities.length; i++) { %>
-              <span style="background:#E8F5EE;color:#1B4332;padding:5px 14px;border-radius:99px;font-size:12px;font-weight:500"><%= amenities[i].name %></span>
+              <span class="amenity-chip"><%= amenities[i].name %></span>
             <% } %>
           </div>
         <% } %>
         <% if (images.length > 0) { %>
-          <p style="margin-top:20px;font-weight:600;font-size:14px;color:#1a1a2e">Photos</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px">
+          <p class="section-label mt-20">Photos</p>
+          <div class="photo-grid mt-8">
             <% for (var j = 0; j < images.length; j++) { %>
-              <img src="<%= images[j].image_path %>" alt="Photo" class="lb-trigger" data-full="<%= images[j].image_path %>" style="width:100%;height:160px;object-fit:cover;border-radius:10px">
+              <img src="<%= images[j].image_path %>" alt="Photo" class="lb-trigger photo-tile" data-full="<%= images[j].image_path %>">
             <% } %>
           </div>
         <% } %>
       </div>
 
       <div class="card">
-        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Landlord Contact</h3>
-        <div style="background:#EEF5F0;padding:16px;border-radius:10px">
-          <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Name:</strong> <%= landlord.name %></p>
-          <p style="font-size:14px;color:#444"><strong>Phone:</strong> <%= landlord.phone ? landlord.phone : 'Not provided' %></p>
+        <h3 class="card-h3">Landlord Contact</h3>
+        <div class="info-box">
+          <p class="info-line"><strong>Name:</strong> <%= landlord.name %></p>
+          <p class="info-line-tight"><strong>Phone:</strong> <%= landlord.phone ? landlord.phone : 'Not provided' %></p>
         </div>
       </div>
 
       <div class="card">
-        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Send A Request</h3>
+        <h3 class="card-h3">Send A Request</h3>
         <% if (existingBooking) { %>
-          <div style="background:#e8f5e9;border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px">
-            <span style="font-size:22px">✅</span>
+          <div class="status-banner">
+            <span class="status-icon">✅</span>
             <div>
-              <p style="font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:2px">
+              <p class="bold-line">
                 <%= existingBooking.type.charAt(0).toUpperCase() + existingBooking.type.slice(1) %> request sent
               </p>
-              <p style="font-size:13px;color:#555">
+              <p class="status-sub">
                 Status: <strong><%= existingBooking.status.charAt(0).toUpperCase() + existingBooking.status.slice(1) %></strong>
                 <% if (existingBooking.visit_date) { %> &nbsp;·&nbsp; Visit date: <%= existingBooking.visit_date %><% } %>
               </p>
               <% if (existingBooking.status === 'accepted') { %>
-                <p style="font-size:13px;color:#2e7d32;margin-top:4px;font-weight:500">Your request was accepted. Contact the landlord to confirm your move-in.</p>
+                <p class="status-note">Your request was accepted. Contact the landlord to confirm your move-in.</p>
               <% } %>
             </div>
           </div>
@@ -100,40 +100,40 @@
             <label>Preferred Visit Date</label>
             <input type="date" name="visit_date" min="<%= new Date().toISOString().split('T')[0] %>" data-required="Please select a visit date">
             <label>Message To Landlord</label>
-            <textarea name="message" placeholder="Introduce yourself and ask any questions..." style="height:90px;resize:vertical"></textarea>
-            <button type="submit" class="btn" style="margin-top:16px">Send Request</button>
+            <textarea name="message" placeholder="Introduce yourself and ask any questions..." class="textarea-md"></textarea>
+            <button type="submit" class="btn mt-16">Send Request</button>
           </form>
         <% } %>
       </div>
 
       <div class="card">
-        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Reviews (<%= reviews.length %>)</h3>
+        <h3 class="card-h3">Reviews (<%= reviews.length %>)</h3>
         <% if (reviews.length === 0) { %>
-          <p style="color:#999;font-size:13px">No reviews yet. Be the first to review!</p>
+          <p class="muted-text">No reviews yet. Be the first to review!</p>
         <% } else { %>
           <% for (var k = 0; k < reviews.length; k++) { %>
             <% var review = reviews[k]; %>
-            <div style="border-bottom:1px solid #f0f0f0;padding:14px 0">
-              <p style="font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:4px"><%= review.student_name %></p>
-              <div style="color:#f57f17;font-size:16px;margin-bottom:4px">
+            <div class="review-item">
+              <p class="review-author"><%= review.student_name %></p>
+              <div class="rating-stars">
                 <% for (var s = 0; s < review.rating; s++) { %>★<% } %>
               </div>
               <% if (review.comment) { %>
-                <p style="font-size:13px;color:#666"><%= review.comment %></p>
+                <p class="review-comment"><%= review.comment %></p>
               <% } %>
             </div>
           <% } %>
         <% } %>
-        <div style="margin-top:24px;border-top:1px solid #f0f0f0;padding-top:24px">
-          <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Leave A Review</h3>
+        <div class="divider-section">
+          <h3 class="card-h3-sm mb-12">Leave A Review</h3>
           <% if (existingReview) { %>
-            <div style="background:#f5f7fa;border-radius:10px;padding:16px">
-              <p style="font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:4px">You reviewed this house</p>
-              <div style="color:#f57f17;font-size:18px;margin-bottom:4px">
+            <div class="info-box info-box--alt">
+              <p class="bold-line">You reviewed this house</p>
+              <div class="rating-stars--lg">
                 <% for (var r = 0; r < existingReview.rating; r++) { %>★<% } %>
               </div>
               <% if (existingReview.comment) { %>
-                <p style="font-size:13px;color:#666"><%= existingReview.comment %></p>
+                <p class="review-comment"><%= existingReview.comment %></p>
               <% } %>
             </div>
           <% } else { %>
@@ -149,24 +149,24 @@
                 <option value="1">★ Terrible</option>
               </select>
               <label>Comment</label>
-              <textarea name="comment" placeholder="Share your experience..." style="height:80px;resize:vertical"
+              <textarea name="comment" placeholder="Share your experience..." class="textarea-sm"
                 data-required="Please share your experience" data-min-length="5" data-min-length-msg="Comment must be at least 5 characters"></textarea>
-              <button type="submit" class="btn" style="margin-top:16px">Submit Review</button>
+              <button type="submit" class="btn mt-16">Submit Review</button>
             </form>
           <% } %>
         </div>
       </div>
 
       <div class="card">
-        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Report This Listing</h3>
+        <h3 class="card-h3">Report This Listing</h3>
         <form action="/student/report" method="POST" data-validate-form>
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <input type="hidden" name="house_id" value="<%= house.id %>">
           <label>Reason For Reporting</label>
-          <textarea name="reason" placeholder="Describe the issue with this listing..." style="height:80px;resize:vertical"
+          <textarea name="reason" placeholder="Describe the issue with this listing..." class="textarea-sm"
             data-required="Please describe the issue"
             data-min-length="10" data-min-length-msg="Please provide more detail (at least 10 characters)"></textarea>
-          <button type="submit" class="btn btn-outline" style="margin-top:16px">Report Listing</button>
+          <button type="submit" class="btn btn-outline mt-16">Report Listing</button>
         </form>
       </div>
     </div>

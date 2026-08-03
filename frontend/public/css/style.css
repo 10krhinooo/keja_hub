@@ -869,3 +869,370 @@ label:has(+ .pwd-wrap > input[required])::after {
   padding: 2px 6px;
   border-radius: 4px;
 }
+
+/* === House Detail Pages === */
+/* Classes shared/near-shared between student/house-detail.ejs and
+   admin/house-detail.ejs, extracted from their formerly inline styles. */
+.page-container {
+  max-width: 900px;
+  margin: 32px auto;
+  padding: 0 24px;
+}
+.page-container--wide {
+  max-width: 1000px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--forest);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.action-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-muted {
+  background: #6c757d;
+}
+
+.detail-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+.detail-title--compact {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 6px;
+}
+
+.meta-line {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.rating-line {
+  color: #f57f17;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.rating-badge {
+  margin-left: 10px;
+  color: #f57f17;
+  font-size: 14px;
+  font-weight: 600;
+}
+.rating-inline {
+  color: #f57f17;
+  font-weight: 600;
+}
+.rating-inline-sub {
+  color: #666;
+  font-weight: 400;
+  font-size: 12px;
+}
+.rating-stars {
+  color: #f57f17;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.rating-stars--lg {
+  color: #f57f17;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.price-display--student {
+  font-size: 28px;
+  color: var(--earth);
+  font-weight: 700;
+  margin: 12px 0;
+}
+.price-display--admin {
+  font-size: 24px;
+  color: var(--forest);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.description-text {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.card-h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.card-h3-sm {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a2e;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.amenity-chip {
+  background: #e8f5ee;
+  color: var(--forest);
+  padding: 5px 14px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.photo-grid--admin {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.photo-tile {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.photo-tile--admin {
+  height: 140px;
+  border-radius: 8px;
+}
+
+.info-box {
+  background: var(--mist);
+  padding: 16px;
+  border-radius: 10px;
+}
+.info-box--alt {
+  background: #f5f7fa;
+}
+.info-line {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 6px;
+}
+.info-line-tight {
+  font-size: 14px;
+  color: #444;
+}
+.link-forest {
+  color: var(--forest);
+}
+
+.status-banner {
+  background: var(--success-bg);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.status-icon {
+  font-size: 22px;
+}
+.bold-line {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.status-sub {
+  font-size: 13px;
+  color: #555;
+}
+.status-note {
+  font-size: 13px;
+  color: var(--success);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.textarea-md {
+  height: 90px;
+  resize: vertical;
+}
+.textarea-sm {
+  height: 80px;
+  resize: vertical;
+}
+
+.muted-text {
+  color: #999;
+  font-size: 13px;
+}
+.subtext {
+  color: #999;
+  font-size: 11px;
+}
+
+.review-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 0;
+}
+.review-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.review-comment {
+  font-size: 13px;
+  color: #666;
+}
+
+.divider-section {
+  margin-top: 24px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 24px;
+}
+
+.table-empty {
+  text-align: center;
+  color: #999;
+  padding: 24px;
+}
+.cell-truncate {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-comment {
+  max-width: 300px;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+.mt-12 {
+  margin-top: 12px;
+}
+.mt-16 {
+  margin-top: 16px;
+}
+.mt-20 {
+  margin-top: 20px;
+}
+.mb-0 {
+  margin-bottom: 0;
+}
+.mb-8 {
+  margin-bottom: 8px;
+}
+.mb-12 {
+  margin-bottom: 12px;
+}
+.mb-16 {
+  margin-bottom: 16px;
+}
+.mb-32 {
+  margin-bottom: 32px;
+}
+
+/* Folded in from admin/house-detail.ejs's page-scoped <style> block. */
+.reject-form {
+  display: none;
+  margin-top: 10px;
+}
+.reject-form textarea {
+  width: 100%;
+  height: 70px;
+  padding: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 6px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* === Skeleton (house detail pages) === */
+.skel-title-lg {
+  height: 24px;
+  width: 65%;
+  margin: 0 0 12px;
+}
+.skel-mb-6 {
+  margin: 0 0 6px;
+}
+.skel-price {
+  height: 32px;
+  width: 40%;
+  margin: 12px 0;
+}
+.skel-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+.skel-photo-tile {
+  height: 160px;
+  border-radius: 10px;
+}
+.skel-chip-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.skel-chip {
+  height: 26px;
+  width: 70px;
+  border-radius: 99px;
+}
