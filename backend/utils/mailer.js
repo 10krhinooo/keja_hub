@@ -162,6 +162,43 @@ function sendPasswordResetEmail(to, resetUrl) {
   });
 }
 
+function sendVerificationEmail(to, verifyUrl) {
+  return sendMail({
+    to,
+    subject: 'Verify your KejaHub email address',
+    heading: 'Confirm your email address',
+    intro:
+      'Thanks for signing up for KejaHub. Click the button below to verify your email address and finish setting up your account.',
+    ctaLabel: 'Verify my email',
+    ctaUrl: verifyUrl,
+    footnote:
+      'This link expires in 24 hours and can only be used once. If you did not create a KejaHub account, you can safely ignore this email.',
+  });
+}
+
+function sendBookingRequestEmail(to, { studentName, houseTitle, houseUrl }) {
+  return sendMail({
+    to,
+    subject: `New booking request: ${houseTitle}`,
+    heading: 'You have a new booking request',
+    intro: `${studentName} has requested a viewing or booking for "${houseTitle}". Log in to accept or decline the request.`,
+    ctaLabel: 'View the request',
+    ctaUrl: houseUrl,
+  });
+}
+
+function sendBookingStatusEmail(to, { houseTitle, status, houseUrl }) {
+  const verb = status === 'accepted' ? 'accepted' : 'declined';
+  return sendMail({
+    to,
+    subject: `Your booking request was ${verb}: ${houseTitle}`,
+    heading: `Your request was ${verb}`,
+    intro: `The landlord for "${houseTitle}" has ${verb} your booking request.`,
+    ctaLabel: 'View the listing',
+    ctaUrl: houseUrl,
+  });
+}
+
 // Test seam. Swapping in a collector transport lets a test assert on the reset
 // link that was actually mailed, rather than reaching for real SMTP. Passing
 // null restores the normal lazy lookup of SMTP_USER / SMTP_PASS.
@@ -173,6 +210,9 @@ function __setTransport(fake) {
 module.exports = {
   sendMail,
   sendPasswordResetEmail,
+  sendVerificationEmail,
+  sendBookingRequestEmail,
+  sendBookingStatusEmail,
   renderTemplate,
   isConfigured,
   __setTransport,

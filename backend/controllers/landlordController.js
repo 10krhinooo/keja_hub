@@ -12,6 +12,7 @@ const {
   applyImageOrder,
   nextSortOrder,
 } = require('../utils/houseImages');
+const { sendBookingStatusEmail } = require('../utils/mailer');
 
 // A listing always needs a cover image, even if the flagged primary was deleted,
 // falling back to sort order keeps thumbnails from silently going blank.
@@ -166,7 +167,7 @@ const showHouse = (req, res) => {
   }
 };
 
-const updateBooking = (req, res) => {
+const updateBooking = async (req, res) => {
   // Express 5 removed the 'back' magic string from res.redirect().
   const goBack = (err) =>
     res.redirect(
@@ -185,12 +186,29 @@ const updateBooking = (req, res) => {
 
     const found = db
       .prepare(
-        `SELECT house_id FROM bookings WHERE id = ? AND house_id IN (SELECT id FROM houses WHERE landlord_id = ?)`
+        `SELECT b.house_id, h.title AS house_title, u.email AS student_email
+         FROM bookings b
+         JOIN houses h ON h.id = b.house_id
+         JOIN users u ON u.id = b.student_id
+         WHERE b.id = ? AND h.landlord_id = ?`
       )
       .get(bookingId, req.session.user.id);
     if (!found) return goBack('booking_not_found');
 
     db.prepare(`UPDATE bookings SET status = ? WHERE id = ?`).run(status, bookingId);
+
+    // Best-effort: a mailer outage should not stop the status update.
+    try {
+      const houseUrl = `${req.protocol}://${req.get('host')}/student/house/${found.house_id}`;
+      await sendBookingStatusEmail(found.student_email, {
+        houseTitle: found.house_title,
+        status,
+        houseUrl,
+      });
+    } catch (mailErr) {
+      console.error('Send booking status email error:', mailErr);
+    }
+
     res.redirect(`/landlord/house/${found.house_id}?success=booking_${status}`);
   } catch (err) {
     console.error('Update booking error:', err);

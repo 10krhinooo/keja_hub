@@ -16,4 +16,16 @@ const requireRole =
     requireLogin(req, res, next);
   };
 
-module.exports = { requireLogin, requireRole };
+// Applied after requireRole('student'|'landlord') — admins are never gated on
+// this, since admin accounts are created directly rather than through
+// registration. Reads the DB rather than trusting the session in case
+// verification happened in a different session.
+const requireVerified = (req, res, next) => {
+  if (!req.session.user) return res.redirect('/login');
+  const db = getDB();
+  const row = db.prepare(`SELECT email_verified FROM users WHERE id = ?`).get(req.session.user.id);
+  if (!row || !row.email_verified) return res.redirect('/verify-email/pending');
+  next();
+};
+
+module.exports = { requireLogin, requireRole, requireVerified };

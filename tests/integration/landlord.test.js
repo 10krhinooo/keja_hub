@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { createTestApp, CREDENTIALS, newPassword } = require('../helpers/app');
 const { loginAs, createAgent } = require('../helpers/agent');
 const { JPEG_1X1, fileExists } = require('../helpers/fixtures');
+const mailer = require('../../backend/utils/mailer');
 
 // Passwords these tests set. Generated so no literal password lives in the repo.
 const NEW_PASSWORD = newPassword();
@@ -497,6 +498,22 @@ describe('landlord', () => {
         '/landlord/dashboard'
       );
       assert.match(res.headers.location, /success=booking_declined/);
+    });
+
+    test('emails the student about the accepted/declined status', async () => {
+      const sent = [];
+      mailer.__setTransport({ sendMail: async (opts) => sent.push(opts) });
+      try {
+        const client = await loginAs(app, 'landlord');
+        const id = bookingFor(houseOf(james).id);
+        await client.post(`/landlord/booking/${id}`, { status: 'accepted' }, '/landlord/dashboard');
+
+        assert.equal(sent.length, 1);
+        assert.equal(sent[0].to, 'brian@student.com');
+        assert.match(sent[0].subject, /accepted/);
+      } finally {
+        mailer.__setTransport(null);
+      }
     });
 
     test('rejects an unknown status', async () => {

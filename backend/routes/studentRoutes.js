@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireRole } = require('../middleware/auth');
+const { requireRole, requireVerified } = require('../middleware/auth');
 const {
   dashboard,
   searchHouses,
@@ -15,6 +15,7 @@ const {
 } = require('../controllers/studentController');
 
 router.use(requireRole('student'));
+router.use(requireVerified);
 
 router.get('/dashboard', dashboard);
 router.get('/search', searchHouses);
