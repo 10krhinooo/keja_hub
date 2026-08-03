@@ -433,7 +433,7 @@ const verifyEmail = (req, res) => {
     return res.render('auth/verify-email-pending', {
       email: req.session.user ? req.session.user.email : null,
       verifyLink: null,
-      error: 'No verification token provided.',
+      error: 'No verification token provided. Use the "Resend Verification Email" button below.',
       info: null,
     });
   }
