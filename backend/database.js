@@ -45,12 +45,14 @@ function resolveSeedPassword() {
   if (process.env.SEED_PASSWORD) return process.env.SEED_PASSWORD;
 
   const generated = crypto.randomBytes(9).toString('base64url');
-  logger.info(
-    'Demo accounts seeded with a generated password. Set SEED_PASSWORD in .env to pick your own.',
-    {
-      password: generated,
-    }
-  );
+  // Deliberately bypasses the structured logger: that JSON stream is meant to
+  // be shipped to a log aggregator, and a generated credential has no
+  // business ending up indexed there. This is a one-time, local-developer
+  // convenience print, not an application log event.
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`Demo accounts seeded with password: ${generated}`);
+    console.log('Set SEED_PASSWORD in .env to pick your own.');
+  }
   return generated;
 }
 
