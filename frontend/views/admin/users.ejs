@@ -110,11 +110,11 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Action</th></tr>
+            <tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th>Verified</th><th>Action</th></tr>
           </thead>
           <tbody>
             <% if (landlords.rows.length === 0) { %>
-              <tr><td colspan="5" style="text-align:center;color:#999;padding:32px">No landlords found</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:#999;padding:32px">No landlords found</td></tr>
             <% } else { %>
               <% for (var j = 0; j < landlords.rows.length; j++) { %>
                 <% var ll = landlords.rows[j]; %>
@@ -130,12 +130,27 @@
                     <% } %>
                   </td>
                   <td>
-                    <form method="POST" action="/admin/users/<%= ll.id %>/toggle">
+                    <% if (ll.is_verified) { %>
+                      <span style="color:#2e7d32;font-weight:500">✓ Verified</span>
+                    <% } else { %>
+                      <span style="color:#999">Not verified</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="POST" action="/admin/users/<%= ll.id %>/toggle" style="display:inline">
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <% if (ll.is_active) { %>
                         <button class="btn btn-danger btn-sm" data-confirm="Deactivate this user?">Deactivate</button>
                       <% } else { %>
                         <button class="btn btn-success btn-sm" data-confirm="Reactivate this user?">Activate</button>
+                      <% } %>
+                    </form>
+                    <form method="POST" action="/admin/users/<%= ll.id %>/verify" style="display:inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <% if (ll.is_verified) { %>
+                        <button class="btn btn-sm" style="background:#6c757d" data-confirm="Remove verified status?">Unverify</button>
+                      <% } else { %>
+                        <button class="btn btn-success btn-sm" data-confirm="Mark this landlord as verified?">Verify</button>
                       <% } %>
                     </form>
                   </td>

@@ -65,7 +65,12 @@
       <div class="card">
         <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Landlord Contact</h3>
         <div style="background:#EEF5F0;padding:16px;border-radius:10px">
-          <p style="font-size:14px;color:#444;margin-bottom:6px"><strong>Name:</strong> <%= landlord.name %></p>
+          <p style="font-size:14px;color:#444;margin-bottom:6px">
+            <strong>Name:</strong> <%= landlord.name %>
+            <% if (landlord.is_verified) { %>
+              <span style="font-size:12px;color:#2e7d32;font-weight:600;margin-left:6px">· ✓ Verified</span>
+            <% } %>
+          </p>
           <p style="font-size:14px;color:#444"><strong>Phone:</strong> <%= landlord.phone ? landlord.phone : 'Not provided' %></p>
         </div>
       </div>

@@ -282,6 +282,45 @@ describe('admin', () => {
       await admin.post(`/admin/users/${brian.id}/toggle`, {}, '/admin/users');
     });
 
+    test('verifies and unverifies a landlord', async () => {
+      const admin = await loginAs(app, 'admin');
+      const james = one(`SELECT id FROM users WHERE email='james@landlord.com'`);
+      const isVerified = () =>
+        one(`SELECT is_verified FROM landlord_profiles WHERE user_id=?`, [james.id]).is_verified;
+      const startedVerified = isVerified();
+
+      await admin.post(`/admin/users/${james.id}/verify`, {}, '/admin/users');
+      assert.equal(isVerified(), startedVerified ? 0 : 1);
+
+      await admin.post(`/admin/users/${james.id}/verify`, {}, '/admin/users');
+      assert.equal(isVerified(), startedVerified);
+    });
+
+    test('the landlord list renders the verified column', async () => {
+      const admin = await loginAs(app, 'admin');
+      const res = await admin.get('/admin/users');
+      assert.match(res.text, /Verified/);
+    });
+
+    test('verifying a user with no landlord profile just redirects', async () => {
+      const admin = await loginAs(app, 'admin');
+      const student = one(`SELECT id FROM users WHERE email='brian@student.com'`);
+      const res = await admin.post(`/admin/users/${student.id}/verify`, {}, '/admin/users');
+      assert.equal(res.headers.location, '/admin/users');
+    });
+
+    test('verifying an unknown user just redirects', async () => {
+      const admin = await loginAs(app, 'admin');
+      const res = await admin.post('/admin/users/9999999/verify', {}, '/admin/users');
+      assert.equal(res.headers.location, '/admin/users');
+    });
+
+    test('verifying a non-numeric id just redirects', async () => {
+      const admin = await loginAs(app, 'admin');
+      const res = await admin.post('/admin/users/abc/verify', {}, '/admin/users');
+      assert.equal(res.headers.location, '/admin/users');
+    });
+
     test('paginates students and landlords independently, clamping out-of-range pages', async () => {
       const admin = await loginAs(app, 'admin');
       assert.equal((await admin.get('/admin/users?student_page=2')).status, 200);
