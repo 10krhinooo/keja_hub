@@ -18,10 +18,11 @@
     .left h1 { font-size:36px; font-weight:700; margin-bottom:12px; line-height:1.2; }
     .left p { font-size:15px; opacity:0.85; line-height:1.6; max-width:380px; }
     .right {
-      width:480px; background:white;
-      display:flex; flex-direction:column; justify-content:center;
+      flex:1; background:white;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
       padding:56px 48px;
     }
+    .form-panel { width:100%; max-width:480px; }
     .logo { font-size:22px; font-weight:700; color:#1B4332; margin-bottom:32px; }
     .logo span { color:#C97D3A; }
     h2 { font-size:26px; font-weight:700; color:#1a1a2e; margin-bottom:6px; }
@@ -58,7 +59,7 @@
     .bottom a { color:#1B4332; text-decoration:none; font-weight:500; }
     @media(max-width:768px) {
       .left { display:none; }
-      .right { width:100%; padding:40px 24px; }
+      .right { padding:40px 24px; }
     }
   </style>
 </head>
@@ -68,35 +69,37 @@
     <p>Confirm your email address so we know it's really you, then head straight to your dashboard.</p>
   </div>
   <div class="right">
-    <a href="/home" style="text-decoration:none"><div class="logo">Keja<span>Hub</span></div></a>
-    <h2>Verify Your Email</h2>
-    <p class="subtitle">We sent a verification link to <strong><%= email %></strong></p>
+    <div class="form-panel">
+      <a href="/home" style="text-decoration:none"><div class="logo">Keja<span>Hub</span></div></a>
+      <h2>Verify Your Email</h2>
+      <p class="subtitle">We sent a verification link to <strong><%= email %></strong></p>
 
-    <% if (error) { %>
-      <div class="error"><%= error %></div>
-    <% } %>
-    <% if (info) { %>
-      <div class="info-box"><%= info %></div>
-    <% } %>
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+      <% if (info) { %>
+        <div class="info-box"><%= info %></div>
+      <% } %>
 
-    <% if (verifyLink) { %>
-      <div class="verify-link-box">
-        <strong>Your verification link (dev mode):</strong>
-        <p>Click the link below to confirm your email. This link expires in 24 hours.</p>
-        <a href="<%= verifyLink %>">Verify My Email →</a>
-        <code><%= verifyLink %></code>
-      </div>
-    <% } %>
+      <% if (verifyLink) { %>
+        <div class="verify-link-box">
+          <strong>Your verification link (dev mode):</strong>
+          <p>Click the link below to confirm your email. This link expires in 24 hours.</p>
+          <a href="<%= verifyLink %>">Verify My Email →</a>
+          <code><%= verifyLink %></code>
+        </div>
+      <% } %>
 
-    <form method="POST" action="/verify-email/resend">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit" class="btn">Resend Verification Email</button>
-    </form>
+      <form method="POST" action="/verify-email/resend">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="btn">Resend Verification Email</button>
+      </form>
 
-    <div class="bottom"><a href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Sign out</a></div>
-    <form id="logout-form" method="POST" action="/logout" style="display:none">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    </form>
+      <div class="bottom"><a href="/logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Sign out</a></div>
+      <form id="logout-form" method="POST" action="/logout" style="display:none">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      </form>
+    </div>
   </div>
 </body>
 </html>
