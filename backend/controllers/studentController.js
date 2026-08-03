@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const { getDB, getDistinctLocations } = require('../database');
 const { sendBookingRequestEmail } = require('../utils/mailer');
+const { buildBaseUrl } = require('../utils/url');
+const logger = require('../utils/logger');
 
 const REVIEWS_PER_PAGE = 10;
 
@@ -26,7 +28,7 @@ const dashboard = (req, res) => {
       .all();
     res.render('student/dashboard', { houses, query: req.query });
   } catch (err) {
-    console.error('Student dashboard error:', err);
+    logger.error('Student dashboard error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -149,7 +151,7 @@ const searchHouses = (req, res) => {
       locations,
     });
   } catch (err) {
-    console.error('Search error:', err);
+    logger.error('Search error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -235,7 +237,7 @@ const viewHouse = (req, res) => {
       query: req.query,
     });
   } catch (err) {
-    console.error('View house error:', err);
+    logger.error('View house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -272,19 +274,19 @@ const sendBooking = async (req, res) => {
     // Best-effort: a mailer outage should not stop the booking from going
     // through. The landlord still sees the request in their dashboard.
     try {
-      const houseUrl = `${req.protocol}://${req.get('host')}/landlord/house/${houseId}`;
+      const houseUrl = `${buildBaseUrl(req)}/landlord/house/${houseId}`;
       await sendBookingRequestEmail(house.landlord_email, {
         studentName: req.session.user.name,
         houseTitle: house.title,
         houseUrl,
       });
     } catch (mailErr) {
-      console.error('Send booking request email error:', mailErr);
+      logger.error('Send booking request email error', { req, err: mailErr });
     }
 
     res.redirect(`/student/house/${houseId}?success=booking_sent`);
   } catch (err) {
-    console.error('Send booking error:', err);
+    logger.error('Send booking error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -308,7 +310,7 @@ const myBookings = (req, res) => {
       .all(req.session.user.id);
     res.render('student/bookings', { bookings });
   } catch (err) {
-    console.error('My bookings error:', err);
+    logger.error('My bookings error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -339,7 +341,7 @@ const addReview = (req, res) => {
     ).run(houseId, req.session.user.id, ratingNum, comment || null);
     res.redirect(`/student/house/${houseId}?success=review_posted`);
   } catch (err) {
-    console.error('Add review error:', err);
+    logger.error('Add review error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -359,7 +361,7 @@ const reportHouse = (req, res) => {
     );
     res.redirect(`/student/house/${houseId}?success=report_filed`);
   } catch (err) {
-    console.error('Report house error:', err);
+    logger.error('Report house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -372,7 +374,7 @@ const showProfile = (req, res) => {
       db.prepare(`SELECT * FROM student_profiles WHERE user_id = ?`).get(userId) || {};
     res.render('student/profile', { profile, query: req.query });
   } catch (err) {
-    console.error('Student profile error:', err);
+    logger.error('Student profile error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };
@@ -394,7 +396,7 @@ const updateProfile = (req, res) => {
     );
     res.redirect('/student/profile?success=profile_updated');
   } catch (err) {
-    console.error('Update student profile error:', err);
+    logger.error('Update student profile error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };
@@ -416,7 +418,7 @@ const changePassword = async (req, res) => {
     db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/student/profile?success=password_changed');
   } catch (err) {
-    console.error('Change password error:', err);
+    logger.error('Change password error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };

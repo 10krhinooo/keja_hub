@@ -3,15 +3,10 @@ const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { runMigrations } = require('./migrations');
+const logger = require('./utils/logger');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, './kejahub.db');
 let db;
-
-// Tests boot a fresh seeded database per file; the startup banner would drown
-// the test reporter output.
-function isQuiet() {
-  return process.env.NODE_ENV === 'test';
-}
 
 async function initDB() {
   db = new Database(DB_PATH);
@@ -35,10 +30,10 @@ async function initDB() {
   try {
     seedSampleData(db);
   } catch (e) {
-    console.warn('Seed skipped:', e.message);
+    logger.warn('Seed skipped', { message: e.message });
   }
 
-  if (!isQuiet()) console.log('KejaHub database ready');
+  logger.info('KejaHub database ready');
 }
 
 // The demo accounts all share one password. It is deliberately not written down
@@ -50,7 +45,11 @@ function resolveSeedPassword() {
   if (process.env.SEED_PASSWORD) return process.env.SEED_PASSWORD;
 
   const generated = crypto.randomBytes(9).toString('base64url');
-  if (!isQuiet()) {
+  // Deliberately bypasses the structured logger: that JSON stream is meant to
+  // be shipped to a log aggregator, and a generated credential has no
+  // business ending up indexed there. This is a one-time, local-developer
+  // convenience print, not an application log event.
+  if (process.env.NODE_ENV !== 'test') {
     console.log(`Demo accounts seeded with password: ${generated}`);
     console.log('Set SEED_PASSWORD in .env to pick your own.');
   }
@@ -61,7 +60,7 @@ function seedSampleData(db) {
   // Never seed demo accounts into a production database.
   // Set SEED=true to override, e.g. for a staging environment.
   if (process.env.NODE_ENV === 'production' && process.env.SEED !== 'true') {
-    if (!isQuiet()) console.log('Seed skipped: NODE_ENV=production (set SEED=true to force)');
+    logger.info('Seed skipped: NODE_ENV=production (set SEED=true to force)');
     return;
   }
 
@@ -846,10 +845,9 @@ function seedSampleData(db) {
     insertReport.run(...r);
   }
 
-  if (!isQuiet())
-    console.log(
-      'Sample data seeded: 6 landlords, 12 students, 33 houses, 34 reviews, 14 bookings, 5 reports'
-    );
+  logger.info(
+    'Sample data seeded: 6 landlords, 12 students, 33 houses, 34 reviews, 14 bookings, 5 reports'
+  );
 }
 
 function getDB() {
