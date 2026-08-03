@@ -44,10 +44,14 @@ async function processAndStoreUploads(files) {
   } catch (err) {
     // Roll back anything already stored in this batch; the caller's
     // deleteUploadedFiles(req.files) handles the remaining temp originals.
-    for (const stored of results) {
-      storage.remove(stored.imagePath);
-      storage.remove(stored.thumbnailPath);
-    }
+    // Awaited (unlike the fire-and-forget default) so the rollback is
+    // guaranteed to finish before the caller sees the rejection.
+    await Promise.all(
+      results.flatMap((stored) => [
+        storage.remove(stored.imagePath),
+        storage.remove(stored.thumbnailPath),
+      ])
+    );
     throw err;
   }
 }

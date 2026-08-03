@@ -33,14 +33,15 @@ async function put(buffer, filename) {
   return `${publicUrl()}/${key}`;
 }
 
-// Fire-and-forget, matching the local driver: a failed delete leaves an
-// orphan object, which must never block or fail the request that removed
-// the database row.
+// Callers that don't need to know when cleanup finishes can fire-and-forget
+// this, matching the local driver (a failed delete leaves an orphan object,
+// which must never block or fail the request that removed the database row);
+// callers that do need it can await the returned promise.
 function remove(url) {
-  if (!url) return;
+  if (!url) return Promise.resolve();
   const prefix = `${publicUrl()}/`;
   const key = url.startsWith(prefix) ? url.slice(prefix.length) : url;
-  client()
+  return client()
     .send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }))
     .catch(() => {});
 }

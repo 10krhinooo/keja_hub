@@ -20,12 +20,14 @@ async function put(buffer, filename) {
   return '/uploads/houses/' + filename;
 }
 
-// Fire-and-forget: a failed unlink leaves an orphan file, which must never
-// block or fail the request that removed the database row.
+// Callers that don't need to know when cleanup finishes can fire-and-forget
+// this (a failed unlink leaves an orphan file, which must never block or fail
+// the request that removed the database row); callers that do need it (e.g.
+// rolling back a partial upload batch) can await the returned promise.
 function remove(imagePath) {
   const abs = resolveUploadPath(imagePath);
-  if (!abs) return;
-  fs.promises.unlink(abs).catch(() => {});
+  if (!abs) return Promise.resolve();
+  return fs.promises.unlink(abs).catch(() => {});
 }
 
 // image_path is already a browser-usable relative URL for the local driver.
