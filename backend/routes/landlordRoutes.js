@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireRole } = require('../middleware/auth');
+const { requireRole, requireVerified } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { csrfVerify } = require('../middleware/csrf');
 const {
@@ -18,6 +18,7 @@ const {
 } = require('../controllers/landlordController');
 
 router.use(requireRole('landlord'));
+router.use(requireVerified);
 
 router.get('/dashboard', dashboard);
 router.get('/add-house', showAddHouse);

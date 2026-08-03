@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { getDB, getDistinctLocations } = require('../database');
+const { sendBookingRequestEmail } = require('../utils/mailer');
 
 const REVIEWS_PER_PAGE = 10;
 
@@ -239,7 +240,7 @@ const viewHouse = (req, res) => {
   }
 };
 
-const sendBooking = (req, res) => {
+const sendBooking = async (req, res) => {
   try {
     const { house_id, type, message, visit_date } = req.body;
     const houseId = parseInt(house_id, 10);
@@ -247,10 +248,14 @@ const sendBooking = (req, res) => {
 
     const db = getDB();
 
-    const houseExists = db
-      .prepare(`SELECT id FROM houses WHERE id = ? AND status = 'approved' AND is_available = 1`)
+    const house = db
+      .prepare(
+        `SELECT h.id, h.title, u.email AS landlord_email FROM houses h
+         JOIN users u ON u.id = h.landlord_id
+         WHERE h.id = ? AND h.status = 'approved' AND h.is_available = 1`
+      )
       .get(houseId);
-    if (!houseExists) return res.redirect('/student/dashboard');
+    if (!house) return res.redirect('/student/dashboard');
 
     const alreadyPending = db
       .prepare(
@@ -263,6 +268,20 @@ const sendBooking = (req, res) => {
     db.prepare(
       `INSERT INTO bookings (house_id, student_id, type, message, visit_date) VALUES (?, ?, ?, ?, ?)`
     ).run(houseId, req.session.user.id, bookingType, message || null, visit_date || null);
+
+    // Best-effort: a mailer outage should not stop the booking from going
+    // through. The landlord still sees the request in their dashboard.
+    try {
+      const houseUrl = `${req.protocol}://${req.get('host')}/landlord/house/${houseId}`;
+      await sendBookingRequestEmail(house.landlord_email, {
+        studentName: req.session.user.name,
+        houseTitle: house.title,
+        houseUrl,
+      });
+    } catch (mailErr) {
+      console.error('Send booking request email error:', mailErr);
+    }
+
     res.redirect(`/student/house/${houseId}?success=booking_sent`);
   } catch (err) {
     console.error('Send booking error:', err);

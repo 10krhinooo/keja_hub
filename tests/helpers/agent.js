@@ -33,6 +33,17 @@ function createAgent(app) {
     return res;
   }
 
+  // register() also regenerates the session on success, same as login().
+  async function register(body) {
+    const _csrf = await csrf('/register');
+    const res = await agent
+      .post('/register')
+      .type('form')
+      .send({ ...body, _csrf });
+    cachedToken = null;
+    return res;
+  }
+
   async function logout() {
     const _csrf = await csrf('/login');
     const res = await agent.post('/logout').type('form').send({ _csrf });
@@ -49,7 +60,7 @@ function createAgent(app) {
       .send({ ...body, _csrf });
   }
 
-  return { agent, csrf, login, logout, post, get: (url) => agent.get(url) };
+  return { agent, csrf, login, register, logout, post, get: (url) => agent.get(url) };
 }
 
 // Passwords come from the harness, which generates them per run. Nothing here

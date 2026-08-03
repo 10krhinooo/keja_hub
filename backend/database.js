@@ -27,12 +27,9 @@ async function initDB() {
 
   if (!adminExists) {
     const hashed = bcrypt.hashSync(adminPassword, 12);
-    db.prepare(`INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)`).run(
-      'Admin',
-      'admin@kejahub.com',
-      hashed,
-      'admin'
-    );
+    db.prepare(
+      `INSERT INTO users (name, email, password, role, email_verified) VALUES (?, ?, ?, ?, 1)`
+    ).run('Admin', 'admin@kejahub.com', hashed, 'admin');
   }
 
   try {
@@ -72,7 +69,12 @@ function seedSampleData(db) {
   if (count > 0) return;
 
   const pw = bcrypt.hashSync(resolveSeedPassword(), 10);
-  const insertUser = db.prepare(`INSERT INTO users (name,email,password,role) VALUES (?,?,?,?)`);
+  // Seed accounts are already email-verified: nobody can click a link mailed
+  // to a demo address, and the point of the seed data is to be usable
+  // immediately.
+  const insertUser = db.prepare(
+    `INSERT INTO users (name,email,password,role,email_verified) VALUES (?,?,?,?,1)`
+  );
 
   // ── Landlords ──────────────────────────────────────────────────────────────
   const landlordDefs = [

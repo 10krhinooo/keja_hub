@@ -2,6 +2,7 @@
   // Every message should say what happened and, on failure, what to do next.
   var TOAST_MESSAGES = {
     registered: 'Account created! Welcome to KejaHub.',
+    verified: 'Email verified. Welcome to KejaHub.',
     booking_sent:
       'Booking request sent. The landlord will respond within 24 hours. Check My Bookings for updates.',
     booking_accepted: 'Booking accepted. The student has been notified.',

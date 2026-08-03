@@ -3,6 +3,7 @@ const migrations = [
   require('./002_house_rejection_reason'),
   require('./003_house_images_sort_order'),
   require('./004_house_images_thumbnail_path'),
+  require('./005_email_verification'),
 ].sort((a, b) => a.version - b.version);
 
 // Records which migrations have already run so a restart doesn't redo work

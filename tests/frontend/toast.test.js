@@ -69,6 +69,7 @@ describe('toast', () => {
     test('covers the success keys the server redirects with', () => {
       for (const key of [
         'registered',
+        'verified',
         'booking_sent',
         'booking_accepted',
         'booking_declined',

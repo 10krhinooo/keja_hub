@@ -1,7 +1,36 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { getDB, getDistinctLocations } = require('../database');
-const { sendPasswordResetEmail } = require('../utils/mailer');
+const { sendPasswordResetEmail, sendVerificationEmail } = require('../utils/mailer');
+
+const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function buildBaseUrl(req) {
+  // Never build links from the Host header: an attacker who sets
+  // Host: evil.com would receive a working link for someone else's account.
+  // APP_URL is mandatory in production (enforced at startup).
+  return process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+// Issues a fresh verification token for a user (replacing any earlier one)
+// and emails it. Shared by registration and the resend action.
+async function issueVerificationEmail(db, req, user) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + VERIFICATION_TTL_MS;
+
+  db.prepare(`DELETE FROM email_verifications WHERE user_id = ?`).run(user.id);
+  db.prepare(
+    `INSERT INTO email_verifications (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
+  ).run(crypto.randomUUID(), user.id, hashToken(token), expiresAt);
+
+  const verifyUrl = `${buildBaseUrl(req)}/verify-email?token=${token}`;
+  const result = await sendVerificationEmail(user.email, verifyUrl);
+
+  // Local development only: with no SMTP configured, surface the link so the
+  // flow stays testable, the same way forgotPassword does.
+  const isProduction = process.env.NODE_ENV === 'production';
+  return !isProduction && !result.delivered ? `/verify-email?token=${token}` : null;
+}
 
 // Emails are compared with `WHERE email = ?`, which is case-sensitive in SQLite.
 // Normalising on every read and write keeps Bob@x.com and bob@x.com one account.
@@ -95,12 +124,27 @@ const register = async (req, res) => {
       );
     }
 
+    // Best-effort: a mailer outage should not stop the account from being
+    // created. The pending page offers a resend action either way.
+    let verifyLink = null;
+    try {
+      verifyLink = await issueVerificationEmail(db, req, user);
+    } catch (mailErr) {
+      console.error('Send verification email error:', mailErr);
+    }
+
     req.session.regenerate((err) => {
       try {
         if (err) throw err;
-        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
-        const dest = role === 'student' ? '/student/dashboard' : '/landlord/dashboard';
-        res.redirect(dest + '?success=registered');
+        req.session.user = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          email_verified: false,
+        };
+        req.session.verifyLink = verifyLink;
+        res.redirect('/verify-email/pending');
       } catch (cbErr) {
         console.error('Register session error:', cbErr);
         res.render('auth/register', { error: 'Session error, please retry', values });
@@ -146,8 +190,15 @@ const login = async (req, res) => {
     req.session.regenerate((err) => {
       try {
         if (err) throw err;
-        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+        req.session.user = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          email_verified: Boolean(user.email_verified),
+        };
         if (user.role === 'admin') return res.redirect('/admin/dashboard?success=welcome');
+        if (!user.email_verified) return res.redirect('/verify-email/pending');
         if (user.role === 'landlord') return res.redirect('/landlord/dashboard?success=welcome');
         res.redirect('/student/dashboard?success=welcome');
       } catch (cbErr) {
@@ -326,6 +377,106 @@ const resetPassword = async (req, res) => {
   }
 };
 
+function dashboardFor(role) {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'landlord') return '/landlord/dashboard';
+  return '/student/dashboard';
+}
+
+const showVerifyPending = (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  if (req.session.user.email_verified) return res.redirect(dashboardFor(req.session.user.role));
+
+  // One-shot: the dev-mode link (surfaced only when SMTP isn't configured) is
+  // shown once, the same way forgotPassword's resetLink works, rather than
+  // living in the session indefinitely.
+  const verifyLink = req.session.verifyLink || null;
+  delete req.session.verifyLink;
+
+  res.render('auth/verify-email-pending', {
+    email: req.session.user.email,
+    verifyLink,
+    error: null,
+    info: null,
+  });
+};
+
+const resendVerification = async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  if (req.session.user.email_verified) return res.redirect(dashboardFor(req.session.user.role));
+
+  try {
+    const db = getDB();
+    const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.session.user.id);
+    const verifyLink = await issueVerificationEmail(db, req, user);
+
+    res.render('auth/verify-email-pending', {
+      email: user.email,
+      verifyLink,
+      error: null,
+      info: 'We have sent a new verification link. Check your inbox (and your spam folder).',
+    });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.render('auth/verify-email-pending', {
+      email: req.session.user.email,
+      verifyLink: null,
+      error: 'We could not resend the verification email just now. Please try again in a moment.',
+      info: null,
+    });
+  }
+};
+
+const verifyEmail = (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.render('auth/verify-email-pending', {
+      email: req.session.user ? req.session.user.email : null,
+      verifyLink: null,
+      error: 'No verification token provided. Use the "Resend Verification Email" button below.',
+      info: null,
+    });
+  }
+
+  try {
+    const db = getDB();
+    const tokenHash = hashToken(token);
+    const verification = db
+      .prepare(`SELECT * FROM email_verifications WHERE token = ?`)
+      .get(tokenHash);
+
+    if (!verification || verification.expires_at < Date.now()) {
+      return res.render('auth/verify-email-pending', {
+        email: req.session.user ? req.session.user.email : null,
+        verifyLink: null,
+        error:
+          'This verification link has expired or has already been used. Request a new one below.',
+        info: null,
+      });
+    }
+
+    db.prepare(`UPDATE users SET email_verified = 1 WHERE id = ?`).run(verification.user_id);
+    db.prepare(`DELETE FROM email_verifications WHERE token = ?`).run(tokenHash);
+
+    // No re-login required if the verifying browser is already the account's
+    // own session.
+    if (req.session.user && req.session.user.id === verification.user_id) {
+      req.session.user.email_verified = true;
+    }
+
+    const user = db.prepare(`SELECT role FROM users WHERE id = ?`).get(verification.user_id);
+    res.redirect(dashboardFor(user.role) + '?success=verified');
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.render('auth/verify-email-pending', {
+      email: req.session.user ? req.session.user.email : null,
+      verifyLink: null,
+      error: 'We could not verify your email just now. Please try again in a moment.',
+      info: null,
+    });
+  }
+};
+
 module.exports = {
   showHome,
   showRegister,
@@ -335,6 +486,9 @@ module.exports = {
   logout,
   showForgotPassword,
   forgotPassword,
+  showVerifyPending,
+  resendVerification,
+  verifyEmail,
   showResetPassword,
   resetPassword,
 };

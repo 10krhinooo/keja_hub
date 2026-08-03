@@ -45,15 +45,16 @@ describe('auth', () => {
       ...over,
     });
 
-    test('creates a student and logs them straight in', async () => {
+    test('creates a student and sends them to verify their email', async () => {
       const client = createAgent(app);
       const body = form();
       const res = await client.post('/register', body, '/register');
       assert.equal(res.status, 302);
-      assert.match(res.headers.location, /\/student\/dashboard\?success=registered/);
+      assert.equal(res.headers.location, '/verify-email/pending');
 
-      const user = one(`SELECT role FROM users WHERE email = ?`, [body.email]);
+      const user = one(`SELECT role, email_verified FROM users WHERE email = ?`, [body.email]);
       assert.equal(user.role, 'student');
+      assert.equal(user.email_verified, 0);
     });
 
     test('creates a landlord with a landlord profile', async () => {
@@ -63,7 +64,7 @@ describe('auth', () => {
         email: `ll-${Math.random().toString(16).slice(2)}@landlord.com`,
       });
       const res = await client.post('/register', body, '/register');
-      assert.match(res.headers.location, /\/landlord\/dashboard/);
+      assert.equal(res.headers.location, '/verify-email/pending');
 
       const user = one(`SELECT id FROM users WHERE email = ?`, [body.email]);
       assert.ok(one(`SELECT id FROM landlord_profiles WHERE user_id = ?`, [user.id]));
@@ -358,6 +359,102 @@ describe('auth', () => {
         '/login'
       );
       assert.match(res.text, /expired or has already been used/);
+    });
+  });
+
+  describe('email verification', () => {
+    const verifyLinkFromPage = (html) => {
+      const match = html.match(/\/verify-email\?token=([a-f0-9]{64})/);
+      return match ? match[1] : null;
+    };
+
+    const registerAndGetLink = async () => {
+      const client = createAgent(app);
+      const email = `verify-${Math.random().toString(16).slice(2)}@student.com`;
+      await client.register({
+        name: 'Verify Me',
+        email,
+        password: CREDENTIALS.seedPassword,
+        confirm_password: CREDENTIALS.seedPassword,
+        role: 'student',
+        phone: '0700000000',
+      });
+      const pending = await client.get('/verify-email/pending');
+      return { client, email, token: verifyLinkFromPage(pending.text) };
+    };
+
+    test('registering blocks the dashboard until verified', async () => {
+      const { client } = await registerAndGetLink();
+      const res = await client.get('/student/dashboard');
+      assert.equal(res.headers.location, '/verify-email/pending');
+    });
+
+    test('stores the token hashed, never in the clear', async () => {
+      const { email, token } = await registerAndGetLink();
+      assert.ok(token, 'a verification link is surfaced with no SMTP configured');
+      assert.equal(one(`SELECT id FROM email_verifications WHERE token = ?`, [token]), null);
+
+      const crypto = require('crypto');
+      const hashed = crypto.createHash('sha256').update(token).digest('hex');
+      const user = one(`SELECT id FROM users WHERE email = ?`, [email]);
+      assert.ok(
+        one(`SELECT id FROM email_verifications WHERE token = ? AND user_id = ?`, [hashed, user.id])
+      );
+    });
+
+    test('consuming a valid token verifies the account and unblocks the dashboard', async () => {
+      const { client, token, email } = await registerAndGetLink();
+      const res = await client.get(`/verify-email?token=${token}`);
+      assert.equal(res.status, 302);
+      assert.match(res.headers.location, /\/student\/dashboard\?success=verified/);
+
+      assert.equal(
+        one(`SELECT email_verified FROM users WHERE email = ?`, [email]).email_verified,
+        1
+      );
+
+      const dashboard = await client.get('/student/dashboard');
+      assert.equal(dashboard.status, 200);
+    });
+
+    test('a token can only be used once', async () => {
+      const { client, token } = await registerAndGetLink();
+      await client.get(`/verify-email?token=${token}`);
+      const reuse = await createAgent(app).get(`/verify-email?token=${token}`);
+      assert.match(reuse.text, /expired or has already been used/);
+    });
+
+    test('rejects an expired token', async () => {
+      const { token } = await registerAndGetLink();
+      const crypto = require('crypto');
+      const hashed = crypto.createHash('sha256').update(token).digest('hex');
+      db.prepare(`UPDATE email_verifications SET expires_at = ? WHERE token = ?`).run(
+        Date.now() - 1000,
+        hashed
+      );
+
+      const res = await createAgent(app).get(`/verify-email?token=${token}`);
+      assert.match(res.text, /expired or has already been used/);
+    });
+
+    test('resend issues a new token and replaces the old one', async () => {
+      const { client, email } = await registerAndGetLink();
+      const res = await client.post('/verify-email/resend', {}, '/verify-email/pending');
+      assert.equal(res.status, 200);
+      const token = verifyLinkFromPage(res.text);
+      assert.ok(token);
+
+      const user = one(`SELECT id FROM users WHERE email = ?`, [email]);
+      const count = one(`SELECT COUNT(*) as c FROM email_verifications WHERE user_id = ?`, [
+        user.id,
+      ]);
+      assert.equal(count.c, 1);
+    });
+
+    test('rejects an unauthenticated verify-email/resend', async () => {
+      const res = await createAgent(app).post('/verify-email/resend', {}, '/login');
+      assert.equal(res.status, 302);
+      assert.equal(res.headers.location, '/login');
     });
   });
 });

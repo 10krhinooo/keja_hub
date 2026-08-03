@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const { createTestApp, CREDENTIALS, newPassword } = require('../helpers/app');
 const { loginAs, createAgent } = require('../helpers/agent');
+const mailer = require('../../backend/utils/mailer');
 
 // Passwords these tests set. Generated so no literal password lives in the repo.
 const NEW_PASSWORD = newPassword();
@@ -230,6 +231,26 @@ describe('student', () => {
         '/student/dashboard'
       );
       assert.match(res.headers.location, /success=booking_sent/);
+    });
+
+    test('emails the landlord about the new request', async () => {
+      const sent = [];
+      mailer.__setTransport({ sendMail: async (opts) => sent.push(opts) });
+      try {
+        const client = await loginAs(app, 'student');
+        const id = freshHouse();
+        await client.post(
+          '/student/booking',
+          { house_id: String(id), type: 'viewing', message: 'Can I view on Saturday?' },
+          '/student/dashboard'
+        );
+
+        assert.equal(sent.length, 1);
+        assert.equal(sent[0].to, 'james@landlord.com');
+        assert.match(sent[0].subject, /New booking request/);
+      } finally {
+        mailer.__setTransport(null);
+      }
     });
 
     test('defaults an unknown type to viewing', async () => {
