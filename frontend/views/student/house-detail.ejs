@@ -111,8 +111,8 @@
         <% } %>
       </div>
 
-      <div class="card">
-        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Reviews (<%= reviews.length %>)</h3>
+      <div class="card" id="reviews">
+        <h3 style="font-size:18px;font-weight:600;margin-bottom:16px">Reviews (<%= reviewCount %>)</h3>
         <% if (reviews.length === 0) { %>
           <p style="color:#999;font-size:13px">No reviews yet. Be the first to review!</p>
         <% } else { %>
@@ -128,6 +128,19 @@
               <% } %>
             </div>
           <% } %>
+        <% } %>
+        <% if (reviewTotalPages > 1) { %>
+          <div style="display:flex;gap:4px;justify-content:center;margin-top:16px;flex-wrap:wrap">
+            <% if (reviewPage > 1) { %>
+              <a href="?review_page=<%= reviewPage-1 %>#reviews" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;text-decoration:none;background:white;color:#3D4F47;border:1px solid #ddd">‹ Prev</a>
+            <% } %>
+            <% for (var rp = Math.max(1, reviewPage-2); rp <= Math.min(reviewTotalPages, reviewPage+2); rp++) { %>
+              <a href="?review_page=<%= rp %>#reviews" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;text-decoration:none;<%= rp===reviewPage ? 'background:#1B4332;color:white' : 'background:white;color:#3D4F47;border:1px solid #ddd' %>"><%= rp %></a>
+            <% } %>
+            <% if (reviewPage < reviewTotalPages) { %>
+              <a href="?review_page=<%= reviewPage+1 %>#reviews" style="padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;text-decoration:none;background:white;color:#3D4F47;border:1px solid #ddd">Next ›</a>
+            <% } %>
+          </div>
         <% } %>
         <div style="margin-top:24px;border-top:1px solid #f0f0f0;padding-top:24px">
           <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Leave A Review</h3>

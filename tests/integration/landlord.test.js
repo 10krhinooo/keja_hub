@@ -75,6 +75,13 @@ describe('landlord', () => {
       const graceHouse = houseOf(grace);
       assert.ok(!res.text.includes(graceHouse.title));
     });
+
+    test('paginates and clamps an out-of-range page', async () => {
+      const client = await loginAs(app, 'landlord');
+      assert.equal((await client.get('/landlord/dashboard?page=2')).status, 200);
+      assert.equal((await client.get('/landlord/dashboard?page=9999')).status, 200);
+      assert.equal((await client.get('/landlord/dashboard?page=0')).status, 200);
+    });
   });
 
   describe('add house', () => {
