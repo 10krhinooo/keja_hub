@@ -8,6 +8,7 @@ const multer = require('multer');
 const rateLimit = require('express-rate-limit');
 const noCache = require('./middleware/noCache');
 const { csrfProtection } = require('./middleware/csrf');
+const logger = require('./utils/logger');
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -57,6 +58,10 @@ app.use(
     hsts: isProduction ? undefined : false,
   })
 );
+
+// Attached before the session so every request, including static assets and
+// rejected auth attempts, can be correlated in the logs by this id.
+app.use(logger.requestId);
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -137,7 +142,7 @@ app.use((req, res) => {
 // Express identifies error middleware by arity, so the fourth argument has to
 // stay even though nothing calls it.
 app.use((err, req, res, _next) => {
-  if (process.env.NODE_ENV !== 'test') console.error(err.stack);
+  logger.error('Unhandled error', { req, err });
 
   // Multer rejects oversized or wrong-type files by throwing. Without this the
   // landlord gets a bare 500 and loses everything they typed.

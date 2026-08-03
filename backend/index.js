@@ -1,18 +1,19 @@
 const app = require('./app');
 const { initDB, closeDB } = require('./database');
+const logger = require('./utils/logger');
 
 const PORT = process.env.PORT || 3000;
 
 initDB()
   .then(() => {
     const server = app.listen(PORT, () => {
-      console.log(`KejaHub running on http://localhost:${PORT}`);
+      logger.info(`KejaHub running on http://localhost:${PORT}`);
     });
 
     // better-sqlite3 writes through to disk on every statement, so shutdown
     // just needs to close the handle cleanly, not flush anything.
     const shutdown = (signal) => {
-      console.log(`\n${signal} received. Closing database and shutting down.`);
+      logger.info(`${signal} received. Closing database and shutting down.`);
       server.close(() => {
         closeDB();
         process.exit(0);
@@ -25,4 +26,4 @@ initDB()
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
   })
-  .catch(console.error);
+  .catch((err) => logger.error('Startup failed', { err }));

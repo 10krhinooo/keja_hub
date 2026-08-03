@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { getDB } = require('../database');
 const { deleteImageFiles, getHouseImagePaths, getHouseImages } = require('../utils/houseImages');
+const logger = require('../utils/logger');
 
 const PER_PAGE = 15;
 
@@ -90,7 +91,7 @@ const dashboard = (req, res) => {
       query: req.query,
     });
   } catch (err) {
-    console.error('Admin dashboard error:', err);
+    logger.error('Admin dashboard error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -147,7 +148,7 @@ const adminListings = (req, res) => {
       query: req.query,
     });
   } catch (err) {
-    console.error('Admin listings error:', err);
+    logger.error('Admin listings error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -183,7 +184,7 @@ const analytics = (req, res) => {
 
     res.render('admin/analytics', { listingsPerMonth, reviewsByRating, topLocations });
   } catch (err) {
-    console.error('Admin analytics error:', err);
+    logger.error('Admin analytics error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -239,7 +240,7 @@ const viewHouse = (req, res) => {
       query: req.query,
     });
   } catch (err) {
-    console.error('Admin view house error:', err);
+    logger.error('Admin view house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -254,7 +255,7 @@ const approveHouse = (req, res) => {
     );
     redirectAfterHouseAction(req, res, houseId, 'listing_approved');
   } catch (err) {
-    console.error('Approve house error:', err);
+    logger.error('Approve house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -271,7 +272,7 @@ const rejectHouse = (req, res) => {
     );
     redirectAfterHouseAction(req, res, houseId, 'listing_rejected');
   } catch (err) {
-    console.error('Reject house error:', err);
+    logger.error('Reject house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -297,7 +298,7 @@ const deleteHouse = (req, res) => {
     deleteImageFiles(imgPaths);
     res.redirect('/admin/listings?success=listing_deleted');
   } catch (err) {
-    console.error('Delete house error:', err);
+    logger.error('Delete house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -325,7 +326,7 @@ const manageUsers = (req, res) => {
 
     res.render('admin/users', { students, landlords, keyword, query: req.query });
   } catch (err) {
-    console.error('Manage users error:', err);
+    logger.error('Manage users error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -340,7 +341,7 @@ const toggleUser = (req, res) => {
     db.prepare(`UPDATE users SET is_active = ? WHERE id = ?`).run(user.is_active ? 0 : 1, userId);
     res.redirect('/admin/users');
   } catch (err) {
-    console.error('Toggle user error:', err);
+    logger.error('Toggle user error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -370,7 +371,7 @@ const manageReports = (req, res) => {
       .all(...params);
     res.render('admin/reports', { reports, status, query: req.query });
   } catch (err) {
-    console.error('Manage reports error:', err);
+    logger.error('Manage reports error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -383,7 +384,7 @@ const resolveReport = (req, res) => {
     db.prepare(`UPDATE reports SET status='resolved' WHERE id=?`).run(reportId);
     res.redirect('/admin/reports?success=report_resolved');
   } catch (err) {
-    console.error('Resolve report error:', err);
+    logger.error('Resolve report error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -434,7 +435,7 @@ const allBookings = (req, res) => {
       query: req.query,
     });
   } catch (err) {
-    console.error('All bookings error:', err);
+    logger.error('All bookings error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -453,7 +454,7 @@ const updateProfile = (req, res) => {
     }
     res.redirect('/admin/profile?success=profile_updated');
   } catch (err) {
-    console.error('Update admin profile error:', err);
+    logger.error('Update admin profile error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };
@@ -475,7 +476,7 @@ const changePassword = async (req, res) => {
     db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/admin/profile?success=password_changed');
   } catch (err) {
-    console.error('Change admin password error:', err);
+    logger.error('Change admin password error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };

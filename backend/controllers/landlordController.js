@@ -13,6 +13,8 @@ const {
   nextSortOrder,
 } = require('../utils/houseImages');
 const { sendBookingStatusEmail } = require('../utils/mailer');
+const { buildBaseUrl } = require('../utils/url');
+const logger = require('../utils/logger');
 
 // A listing always needs a cover image, even if the flagged primary was deleted,
 // falling back to sort order keeps thumbnails from silently going blank.
@@ -46,7 +48,7 @@ const dashboard = (req, res) => {
       .all(req.session.user.id);
     res.render('landlord/dashboard', { houses, query: req.query });
   } catch (err) {
-    console.error('Landlord dashboard error:', err);
+    logger.error('Landlord dashboard error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -123,7 +125,7 @@ const addHouse = async (req, res) => {
     insertListing();
     res.redirect('/landlord/dashboard?success=listing_submitted');
   } catch (err) {
-    console.error('Add house error:', err);
+    logger.error('Add house error', { req, err });
     deleteUploadedFiles(req.files);
     renderAddHouse(res, {
       error:
@@ -162,7 +164,7 @@ const showHouse = (req, res) => {
 
     res.render('landlord/house-detail', { house, images, amenities, bookings, query: req.query });
   } catch (err) {
-    console.error('Show house error:', err);
+    logger.error('Show house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -199,19 +201,19 @@ const updateBooking = async (req, res) => {
 
     // Best-effort: a mailer outage should not stop the status update.
     try {
-      const houseUrl = `${req.protocol}://${req.get('host')}/student/house/${found.house_id}`;
+      const houseUrl = `${buildBaseUrl(req)}/student/house/${found.house_id}`;
       await sendBookingStatusEmail(found.student_email, {
         houseTitle: found.house_title,
         status,
         houseUrl,
       });
     } catch (mailErr) {
-      console.error('Send booking status email error:', mailErr);
+      logger.error('Send booking status email error', { req, err: mailErr });
     }
 
     res.redirect(`/landlord/house/${found.house_id}?success=booking_${status}`);
   } catch (err) {
-    console.error('Update booking error:', err);
+    logger.error('Update booking error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -251,7 +253,7 @@ const showEditHouse = (req, res) => {
 
     renderEditHouse(res, db, house);
   } catch (err) {
-    console.error('Show edit house error:', err);
+    logger.error('Show edit house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -382,7 +384,7 @@ const editHouse = async (req, res) => {
         : 'listing_updated';
     res.redirect(`/landlord/house/${houseId}?success=${success}`);
   } catch (err) {
-    console.error('Edit house error:', err);
+    logger.error('Edit house error', { req, err });
     deleteUploadedFiles(req.files);
     if (house) {
       return renderEditHouse(res, db, house, {
@@ -419,7 +421,7 @@ const deleteHouse = (req, res) => {
 
     res.redirect('/landlord/dashboard?success=listing_deleted');
   } catch (err) {
-    console.error('Delete house error:', err);
+    logger.error('Delete house error', { req, err });
     res.status(500).send('Something went wrong. Please try again.');
   }
 };
@@ -432,7 +434,7 @@ const showProfile = (req, res) => {
       {};
     res.render('landlord/profile', { profile, query: req.query });
   } catch (err) {
-    console.error('Landlord profile error:', err);
+    logger.error('Landlord profile error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };
@@ -453,7 +455,7 @@ const updateProfile = (req, res) => {
     );
     res.redirect('/landlord/profile?success=profile_updated');
   } catch (err) {
-    console.error('Update landlord profile error:', err);
+    logger.error('Update landlord profile error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };
@@ -475,7 +477,7 @@ const changePassword = async (req, res) => {
     db.prepare(`UPDATE users SET password = ? WHERE id = ?`).run(newHash, req.session.user.id);
     res.redirect('/landlord/profile?success=password_changed');
   } catch (err) {
-    console.error('Change landlord password error:', err);
+    logger.error('Change landlord password error', { req, err });
     res.status(500).send('Something went wrong.');
   }
 };

@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const logger = require('./logger');
 
 /* Gmail SMTP. Requires a Google account with 2-Step Verification enabled and a
    16-character App Password (a normal account password will be rejected):
@@ -132,9 +133,7 @@ async function sendMail({
   const transport = getTransporter();
 
   if (!transport) {
-    if (process.env.NODE_ENV !== 'test') {
-      console.log(`[email:not-configured] To: ${to} | ${subject}\n${plain}\n`);
-    }
+    logger.info('Mailer not configured, logging email instead of sending', { to, subject, plain });
     return { delivered: false, reason: 'not_configured' };
   }
 

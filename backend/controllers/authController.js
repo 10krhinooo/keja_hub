@@ -2,15 +2,10 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { getDB, getDistinctLocations } = require('../database');
 const { sendPasswordResetEmail, sendVerificationEmail } = require('../utils/mailer');
+const { buildBaseUrl } = require('../utils/url');
+const logger = require('../utils/logger');
 
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function buildBaseUrl(req) {
-  // Never build links from the Host header: an attacker who sets
-  // Host: evil.com would receive a working link for someone else's account.
-  // APP_URL is mandatory in production (enforced at startup).
-  return process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-}
 
 // Issues a fresh verification token for a user (replacing any earlier one)
 // and emails it. Shared by registration and the resend action.
@@ -130,7 +125,7 @@ const register = async (req, res) => {
     try {
       verifyLink = await issueVerificationEmail(db, req, user);
     } catch (mailErr) {
-      console.error('Send verification email error:', mailErr);
+      logger.error('Send verification email error', { req, err: mailErr });
     }
 
     req.session.regenerate((err) => {
@@ -146,12 +141,12 @@ const register = async (req, res) => {
         req.session.verifyLink = verifyLink;
         res.redirect('/verify-email/pending');
       } catch (cbErr) {
-        console.error('Register session error:', cbErr);
+        logger.error('Register session error', { req, err: cbErr });
         res.render('auth/register', { error: 'Session error, please retry', values });
       }
     });
   } catch (err) {
-    console.error('Register error:', err);
+    logger.error('Register error', { req, err });
     res.render('auth/register', {
       error: 'We could not create your account just now. Please try again in a moment.',
       values,
@@ -202,12 +197,12 @@ const login = async (req, res) => {
         if (user.role === 'landlord') return res.redirect('/landlord/dashboard?success=welcome');
         res.redirect('/student/dashboard?success=welcome');
       } catch (cbErr) {
-        console.error('Login session error:', cbErr);
+        logger.error('Login session error', { req, err: cbErr });
         res.status(500).send('Something went wrong. Please try again.');
       }
     });
   } catch (err) {
-    console.error('Login error:', err);
+    logger.error('Login error', { req, err });
     res.render('auth/login', {
       error: 'We could not sign you in just now. Please try again in a moment.',
     });
@@ -267,18 +262,14 @@ const forgotPassword = async (req, res) => {
       `INSERT INTO password_resets (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)`
     ).run(crypto.randomUUID(), user.id, hashToken(token), expiresAt);
 
-    // Never build the link from the Host header: an attacker who sets
-    // Host: evil.com would receive a working reset link for someone else's
-    // account. APP_URL is mandatory in production (enforced at startup).
     const isProduction = process.env.NODE_ENV === 'production';
-    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
-    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+    const resetUrl = `${buildBaseUrl(req)}/reset-password?token=${token}`;
 
     const result = await sendPasswordResetEmail(user.email, resetUrl);
 
     if (!result.delivered && isProduction) {
       // Showing the token in the response would let anyone reset any account.
-      console.error('Password reset email could not be sent: mailer not configured');
+      logger.error('Password reset email could not be sent: mailer not configured', { req });
       return res.render('auth/forgot-password', {
         error: 'We could not send the reset email just now. Please try again in a few minutes.',
         resetLink: null,
@@ -294,7 +285,7 @@ const forgotPassword = async (req, res) => {
       info: RESET_SENT_INFO,
     });
   } catch (err) {
-    console.error('Forgot password error:', err);
+    logger.error('Forgot password error', { req, err });
     res.render('auth/forgot-password', {
       error: 'We could not send the reset email just now. Please try again in a few minutes.',
       resetLink: null,
@@ -368,7 +359,7 @@ const resetPassword = async (req, res) => {
 
     res.redirect('/login?success=password_reset');
   } catch (err) {
-    console.error('Reset password error:', err);
+    logger.error('Reset password error', { req, err });
     res.render('auth/reset-password', {
       error: 'We could not reset your password just now. Please try again in a moment.',
       valid: true,
@@ -417,7 +408,7 @@ const resendVerification = async (req, res) => {
       info: 'We have sent a new verification link. Check your inbox (and your spam folder).',
     });
   } catch (err) {
-    console.error('Resend verification error:', err);
+    logger.error('Resend verification error', { req, err });
     res.render('auth/verify-email-pending', {
       email: req.session.user.email,
       verifyLink: null,
@@ -467,7 +458,7 @@ const verifyEmail = (req, res) => {
     const user = db.prepare(`SELECT role FROM users WHERE id = ?`).get(verification.user_id);
     res.redirect(dashboardFor(user.role) + '?success=verified');
   } catch (err) {
-    console.error('Verify email error:', err);
+    logger.error('Verify email error', { req, err });
     res.render('auth/verify-email-pending', {
       email: req.session.user ? req.session.user.email : null,
       verifyLink: null,
