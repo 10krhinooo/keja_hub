@@ -17,7 +17,12 @@ function ensureMigrationsTable(db) {
 }
 
 function appliedVersions(db) {
-  return new Set(db.prepare(`SELECT version FROM schema_migrations`).all().map((r) => r.version));
+  return new Set(
+    db
+      .prepare(`SELECT version FROM schema_migrations`)
+      .all()
+      .map((r) => r.version)
+  );
 }
 
 function runMigrations(db) {

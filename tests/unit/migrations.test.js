@@ -66,7 +66,9 @@ describe('migrations', () => {
     const db = new Database(':memory:');
     runMigrations(db);
 
-    db.prepare(`INSERT INTO users (name, email, password, role) VALUES ('L','l@l.com','x','landlord')`).run();
+    db.prepare(
+      `INSERT INTO users (name, email, password, role) VALUES ('L','l@l.com','x','landlord')`
+    ).run();
     const landlordId = db.prepare(`SELECT id FROM users`).get().id;
     db.prepare(`INSERT INTO houses (landlord_id, title, rent, location) VALUES (?,'x',1,'y')`).run(
       landlordId
