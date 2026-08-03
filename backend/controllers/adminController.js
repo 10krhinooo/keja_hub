@@ -321,8 +321,7 @@ const manageUsers = (req, res) => {
       const whereClause = `WHERE ${conds.join(' AND ')}`;
 
       const totalCount =
-        db.prepare(`SELECT COUNT(*) ${fromClause} ${whereClause}`).get(...params)['COUNT(*)'] ||
-        0;
+        db.prepare(`SELECT COUNT(*) ${fromClause} ${whereClause}`).get(...params)['COUNT(*)'] || 0;
       const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
       const page = Math.min(Math.max(1, parseInt(req.query[pageParam], 10) || 1), totalPages);
       const offset = (page - 1) * PER_PAGE;
