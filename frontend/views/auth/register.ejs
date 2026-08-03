@@ -42,11 +42,12 @@
     .left p { font-size: 15px; opacity: 0.72; line-height: 1.66; max-width: 380px; }
 
     .right {
-      width: 520px;
+      flex: 1;
       background: var(--cream);
-      display: flex; flex-direction: column; justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 48px; overflow-y: auto;
     }
+    .form-panel { width: 100%; max-width: 520px; }
 
     .logo {
       font-size: 20px; font-weight: 700; color: var(--forest);
@@ -131,7 +132,7 @@
 
     @media (max-width: 768px) {
       .left { display: none; }
-      .right { width: 100%; padding: 32px 24px; }
+      .right { padding: 32px 24px; }
       .row { grid-template-columns: 1fr; }
     }
   </style>
@@ -144,89 +145,91 @@
   </div>
 
   <div class="right">
-    <a href="/home" class="logo">Keja<span>Hub</span></a>
-    <h2>Create an account</h2>
-    <p class="subtitle">Fill in your details to get started</p>
+    <div class="form-panel">
+      <a href="/home" class="logo">Keja<span>Hub</span></a>
+      <h2>Create an account</h2>
+      <p class="subtitle">Fill in your details to get started</p>
 
-    <% if (error) { %>
-      <div class="error"><%= error %></div>
-    <% } %>
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
 
-    <form method="POST" action="/register" autocomplete="off" data-validate-form>
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <form method="POST" action="/register" autocomplete="off" data-validate-form>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-      <div class="row">
+        <div class="row">
+          <div>
+            <label>Full name</label>
+            <input type="text" name="name" placeholder="Your full name"
+              value="<%= (typeof values !== 'undefined' && values.name) ? values.name : '' %>"
+              data-required="Full name is required"
+              data-min-length="2" data-min-length-msg="Name must be at least 2 characters">
+            <span class="field-error"></span>
+          </div>
+          <div>
+            <label>Phone number</label>
+            <input type="tel" name="phone" placeholder="e.g. 0712345678"
+              value="<%= (typeof values !== 'undefined' && values.phone) ? values.phone : '' %>"
+              data-required="Phone number is required"
+              data-pattern="^\d{10}$" data-pattern-msg="Phone must be exactly 10 digits">
+            <span class="field-error"></span>
+          </div>
+        </div>
+
+        <label>Email address</label>
+        <input type="email" name="email" placeholder="you@example.com"
+          value="<%= (typeof values !== 'undefined' && values.email) ? values.email : '' %>"
+          data-required="Email is required"
+          data-email="Please enter a valid email address">
+        <span class="field-error"></span>
+
         <div>
-          <label>Full name</label>
-          <input type="text" name="name" placeholder="Your full name"
-            value="<%= (typeof values !== 'undefined' && values.name) ? values.name : '' %>"
-            data-required="Full name is required"
-            data-min-length="2" data-min-length-msg="Name must be at least 2 characters">
+          <label>Password <span style="color:var(--quiet);font-weight:400">(min 8 characters)</span></label>
+          <div class="pwd-wrap">
+            <input type="password" name="password" placeholder="Create a password" autocomplete="new-password"
+              data-required="Password is required"
+              data-min-length="8" data-min-length-msg="Password must be at least 8 characters"
+              data-password-strength>
+            <button type="button" class="pwd-eye" data-toggle-password aria-label="Show password">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
           <span class="field-error"></span>
         </div>
+
         <div>
-          <label>Phone number</label>
-          <input type="tel" name="phone" placeholder="e.g. 0712345678"
-            value="<%= (typeof values !== 'undefined' && values.phone) ? values.phone : '' %>"
-            data-required="Phone number is required"
-            data-pattern="^\d{10}$" data-pattern-msg="Phone must be exactly 10 digits">
+          <label>Confirm password</label>
+          <div class="pwd-wrap">
+            <input type="password" name="confirm_password" placeholder="Confirm your password" autocomplete="new-password"
+              data-required="Please confirm your password"
+              data-match="password" data-match-msg="Passwords do not match">
+            <button type="button" class="pwd-eye" data-toggle-password aria-label="Show password">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
           <span class="field-error"></span>
         </div>
-      </div>
 
-      <label>Email address</label>
-      <input type="email" name="email" placeholder="you@example.com"
-        value="<%= (typeof values !== 'undefined' && values.email) ? values.email : '' %>"
-        data-required="Email is required"
-        data-email="Please enter a valid email address">
-      <span class="field-error"></span>
-
-      <div>
-        <label>Password <span style="color:var(--quiet);font-weight:400">(min 8 characters)</span></label>
-        <div class="pwd-wrap">
-          <input type="password" name="password" placeholder="Create a password" autocomplete="new-password"
-            data-required="Password is required"
-            data-min-length="8" data-min-length-msg="Password must be at least 8 characters"
-            data-password-strength>
-          <button type="button" class="pwd-eye" data-toggle-password aria-label="Show password">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
+        <label>I am a</label>
+        <div class="role-grid" data-role-select
+          data-selected-role="<%= (typeof values !== 'undefined' && values.role) ? values.role : '' %>">
+          <label class="role-card" id="card-student" data-role="student">
+            <input type="radio" name="role" value="student">
+            <span class="icon">🎓</span>
+            <span class="label">Student</span>
+          </label>
+          <label class="role-card" id="card-landlord" data-role="landlord">
+            <input type="radio" name="role" value="landlord">
+            <span class="icon">🏠</span>
+            <span class="label">Landlord</span>
+          </label>
         </div>
-        <span class="field-error"></span>
-      </div>
 
-      <div>
-        <label>Confirm password</label>
-        <div class="pwd-wrap">
-          <input type="password" name="confirm_password" placeholder="Confirm your password" autocomplete="new-password"
-            data-required="Please confirm your password"
-            data-match="password" data-match-msg="Passwords do not match">
-          <button type="button" class="pwd-eye" data-toggle-password aria-label="Show password">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-        <span class="field-error"></span>
-      </div>
+        <button type="submit" class="btn">Create account</button>
+      </form>
 
-      <label>I am a</label>
-      <div class="role-grid" data-role-select
-        data-selected-role="<%= (typeof values !== 'undefined' && values.role) ? values.role : '' %>">
-        <label class="role-card" id="card-student" data-role="student">
-          <input type="radio" name="role" value="student">
-          <span class="icon">🎓</span>
-          <span class="label">Student</span>
-        </label>
-        <label class="role-card" id="card-landlord" data-role="landlord">
-          <input type="radio" name="role" value="landlord">
-          <span class="icon">🏠</span>
-          <span class="label">Landlord</span>
-        </label>
-      </div>
-
-      <button type="submit" class="btn">Create account</button>
-    </form>
-
-    <div class="bottom">Already have an account? <a href="/login">Sign in</a></div>
+      <div class="bottom">Already have an account? <a href="/login">Sign in</a></div>
+    </div>
   </div>
 
   <script src="/js/validation.js"></script>
